@@ -1,0 +1,9 @@
+[Unit]
+Description=Sauvegarde MyWorkshop (base PostgreSQL + fichiers)
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=myworkshop
+Group=myworkshop
+ExecStart=/opt/myworkshop/app/deploy/backup/backup.sh

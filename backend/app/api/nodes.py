@@ -1,0 +1,53 @@
+import uuid
+
+from fastapi import APIRouter, Query
+from fastapi.responses import Response
+
+from app.api.deps import CurrentUser, DbSession, Writer
+from app.core.errors import not_found
+from app.models import Node
+from app.schemas import NodeDetail, NodeIn, NodeOut, NodePatch
+from app.services import nodes as node_service
+
+router = APIRouter(prefix="/nodes", tags=["emplacements"])
+
+
+@router.get("", response_model=list[NodeOut])
+def list_children(
+    db: DbSession,
+    _: CurrentUser,
+    parent_id: uuid.UUID | None = Query(default=None, description="Absent = racine"),
+) -> list[Node]:
+    return node_service.children(db, parent_id)
+
+
+@router.post("", response_model=NodeDetail, status_code=201)
+def create_node(body: NodeIn, db: DbSession, user: Writer) -> NodeDetail:
+    node = node_service.create(db, body, user)
+    return node_service.detail(db, node)
+
+
+@router.get("/{node_id}", response_model=NodeDetail)
+def get_node(node_id: uuid.UUID, db: DbSession, _: CurrentUser) -> NodeDetail:
+    node = db.get(Node, node_id)
+    if node is None or node.archived_at is not None:
+        raise not_found("Élément")
+    return node_service.detail(db, node)
+
+
+@router.patch("/{node_id}", response_model=NodeDetail)
+def patch_node(node_id: uuid.UUID, body: NodePatch, db: DbSession, user: Writer) -> NodeDetail:
+    node = db.get(Node, node_id)
+    if node is None or node.archived_at is not None:
+        raise not_found("Élément")
+    node = node_service.patch(db, node, body, user)
+    return node_service.detail(db, node)
+
+
+@router.delete("/{node_id}", status_code=204)
+def archive_node(node_id: uuid.UUID, db: DbSession, user: Writer) -> Response:
+    node = db.get(Node, node_id)
+    if node is None or node.archived_at is not None:
+        raise not_found("Élément")
+    node_service.archive(db, node, user)
+    return Response(status_code=204)

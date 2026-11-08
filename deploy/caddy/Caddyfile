@@ -1,0 +1,34 @@
+# Remplacer workshop.example.fr par le nom choisi (voir docs/installation.md, section HTTPS).
+# Sans nom de domaine : décommenter « tls internal » et installer le certificat racine de Caddy
+# sur chaque appareil.
+
+workshop.example.fr {
+	# tls internal
+
+	encode zstd gzip
+
+	request_body {
+		max_size 20MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "same-origin"
+	}
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	# Le service worker doit toujours être revalidé pour que les mises à jour arrivent.
+	@sw path /sw.js /registerSW.js /manifest.webmanifest
+	header @sw Cache-Control "no-cache"
+
+	handle {
+		root * /opt/myworkshop/app/frontend/dist
+		try_files {path} /index.html
+		file_server
+	}
+}

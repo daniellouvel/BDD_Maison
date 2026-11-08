@@ -1,0 +1,24 @@
+[Unit]
+Description=MyWorkshop API (FastAPI)
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=myworkshop
+Group=myworkshop
+WorkingDirectory=/opt/myworkshop/app/backend
+EnvironmentFile=/etc/myworkshop/myworkshop.env
+ExecStart=/opt/myworkshop/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --proxy-headers --workers 2
+Restart=on-failure
+RestartSec=5
+
+# Durcissement
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/myworkshop
+
+[Install]
+WantedBy=multi-user.target

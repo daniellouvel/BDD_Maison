@@ -6,7 +6,7 @@ from fastapi.responses import Response
 from app.api.deps import CurrentUser, DbSession, Writer
 from app.core.errors import not_found
 from app.models import Node
-from app.schemas import NodeDetail, NodeIn, NodeOut, NodePatch
+from app.schemas import LayoutIn, NodeDetail, NodeIn, NodeOut, NodePatch
 from app.services import nodes as node_service
 
 router = APIRouter(prefix="/nodes", tags=["emplacements"])
@@ -41,6 +41,15 @@ def patch_node(node_id: uuid.UUID, body: NodePatch, db: DbSession, user: Writer)
     if node is None or node.archived_at is not None:
         raise not_found("Élément")
     node = node_service.patch(db, node, body, user)
+    return node_service.detail(db, node)
+
+
+@router.put("/{node_id}/layout", response_model=NodeDetail)
+def set_layout(node_id: uuid.UUID, body: LayoutIn, db: DbSession, user: Writer) -> NodeDetail:
+    node = db.get(Node, node_id)
+    if node is None or node.archived_at is not None:
+        raise not_found("Élément")
+    node = node_service.set_layout(db, node, body, user)
     return node_service.detail(db, node)
 
 

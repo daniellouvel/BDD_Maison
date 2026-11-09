@@ -74,6 +74,21 @@ export interface NodeDetail extends Node {
   article_name: string | null;
   qr_code: string | null;
   archived: boolean;
+  layout?: BoxLayout | null;
+}
+
+/** Case d'une boîte : rectangle en fractions de la photo (0 à 1) et élément enfant associé. */
+export interface BoxCell {
+  node_id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface BoxLayout {
+  photo_id: string | null;
+  cells: BoxCell[];
 }
 
 export type LabelStatus = "available" | "assigned" | "disabled";

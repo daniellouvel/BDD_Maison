@@ -172,6 +172,23 @@ class NodeDetail(NodeOut):
     article_name: str | None = None
     qr_code: str | None = None
     archived: bool = False
+    layout: dict | None = None
+
+
+class LayoutCellIn(BaseModel):
+    """Case d'une boîte : rectangle en fractions de la photo (0 à 1) et nœud enfant associé."""
+
+    node_id: uuid.UUID
+    x: float = Field(ge=0, le=1)
+    y: float = Field(ge=0, le=1)
+    w: float = Field(gt=0, le=1)
+    h: float = Field(gt=0, le=1)
+
+
+class LayoutIn(BaseModel):
+    version: int
+    photo_id: uuid.UUID | None = None
+    cells: list[LayoutCellIn] = Field(default_factory=list, max_length=500)
 
 
 # --- Stock --------------------------------------------------------------------------------------

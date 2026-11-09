@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
 import LabelPicker from "../components/LabelPicker";
+import BoxPlan from "../components/BoxPlan";
 import LocationPicker from "../components/LocationPicker";
 import ArticleDetailScreen from "./ArticleDetail";
 import MovementForm from "../components/MovementForm";
@@ -146,6 +147,7 @@ export default function Nodes() {
         </section>
       )}
 
+      {node?.kind === "container" && <BoxPlan node={node} contents={children} canWrite={canWrite} onChanged={load} />}
       {node?.kind !== "item" && (
         <>
           <section className="card">

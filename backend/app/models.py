@@ -160,6 +160,8 @@ class Node(Base):
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     archived_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    # Plan d'une boîte : photo et cases (rectangles en fractions de la photo, cases = nœuds enfants).
+    layout: Mapped[dict[str, Any] | None] = mapped_column(JSON)
 
 
 class Movement(Base):

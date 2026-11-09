@@ -199,3 +199,12 @@ code { font-size: 0.85em; overflow-wrap: anywhere; }
 pre.ocr { white-space: pre-wrap; word-break: break-word; font-size: 0.8rem; background: var(--bg); padding: 0.5rem; border-radius: 6px; max-height: 12rem; overflow: auto; }
 label.checkbox { display: flex; align-items: center; gap: 0.5rem; }
 label.checkbox input { width: auto; }
+
+/* Plan d'une boîte (photo et cases tracées) */
+.plan { position: relative; touch-action: none; user-select: none; margin: 0.5rem 0; }
+.plan img { display: block; width: 100%; height: auto; border-radius: 8px; }
+.plan-cell { position: absolute; box-sizing: border-box; border: 2px solid var(--accent); border-radius: 4px; background: rgba(255, 255, 255, 0.12); color: #fff; text-shadow: 0 1px 2px #000; font-size: 0.8rem; display: flex; align-items: flex-start; justify-content: flex-start; padding: 2px 4px; overflow: hidden; text-decoration: none; }
+.plan-cell span { background: rgba(0, 0, 0, 0.45); border-radius: 3px; padding: 0 3px; }
+.plan-editing .plan-cell { pointer-events: none; }
+.plan-editing { cursor: crosshair; }
+.plan-draft { border-style: dashed; background: rgba(255, 255, 255, 0.25); }

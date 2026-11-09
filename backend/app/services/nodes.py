@@ -4,8 +4,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError, conflict_version
-from app.models import Article, Movement, Node, NodeType, QrLabel, User, utcnow
-from app.schemas import BreadcrumbItem, NodeDetail, NodeIn, NodePatch
+from app.models import Article, Attachment, Movement, Node, NodeType, QrLabel, User, utcnow
+from app.schemas import BreadcrumbItem, LayoutIn, NodeDetail, NodeIn, NodePatch
 from app.services.common import audit, get_active, snapshot
 
 
@@ -92,6 +92,7 @@ def detail(db: Session, node: Node) -> NodeDetail:
         breadcrumb=crumbs,
         children_count=int(count or 0),
         article_name=article_name,
+        layout=node.layout,
     )
 
 
@@ -196,6 +197,47 @@ def patch(db: Session, node: Node, data: NodePatch, actor: User) -> Node:
             )
         )
 
+    node.version += 1
+    node.updated_at = utcnow()
+    audit(db, "node", node, actor, "update", before=before)
+    db.commit()
+    db.refresh(node)
+    return node
+
+
+def set_layout(db: Session, node: Node, data: LayoutIn, actor: User) -> Node:
+    """Enregistre le plan d'un contenant : photo et cases (chacune = un enfant du contenant)."""
+    if node.archived_at is not None:
+        raise ApiError(404, "not_found", "Élément introuvable")
+    if node.kind == "item":
+        raise ApiError(422, "invalid_fields", "Un objet n'a pas de plan.")
+    if data.version != node.version:
+        raise conflict_version()
+
+    if data.photo_id is not None:
+        photo = db.get(Attachment, data.photo_id)
+        if photo is None or photo.kind != "photo" or photo.node_id != node.id:
+            raise ApiError(422, "invalid_photo", "La photo doit être ajoutée à ce contenant.")
+
+    seen: set[uuid.UUID] = set()
+    cells: list[dict] = []
+    for cell in data.cells:
+        if cell.node_id in seen:
+            raise ApiError(422, "duplicate_cell", "Une case apparaît deux fois dans le plan.")
+        seen.add(cell.node_id)
+        child = db.get(Node, cell.node_id)
+        if child is None or child.archived_at is not None or child.parent_id != node.id:
+            raise ApiError(422, "invalid_cell", "Chaque case doit être un élément du contenant.")
+        if child.kind == "item":
+            raise ApiError(422, "invalid_cell", "Une case ne peut pas être un objet.")
+        if cell.x + cell.w > 1.001 or cell.y + cell.h > 1.001:
+            raise ApiError(422, "invalid_cell", "Une case dépasse la photo.")
+        cells.append(
+            {"node_id": str(cell.node_id), "x": cell.x, "y": cell.y, "w": cell.w, "h": cell.h}
+        )
+
+    before = snapshot(node)
+    node.layout = {"photo_id": str(data.photo_id) if data.photo_id else None, "cells": cells}
     node.version += 1
     node.updated_at = utcnow()
     audit(db, "node", node, actor, "update", before=before)

@@ -24,7 +24,12 @@ export default function BoxPlan({
   onChanged: () => void;
 }) {
   const navigate = useNavigate();
-  const layout: BoxLayout = node.layout ?? DEFAULT;
+  // Un plan enregistré avec l'ancien format (sur photo) n'a pas d'étages : on repart d'un plan vide.
+  const stored = node.layout;
+  const layout: BoxLayout =
+    stored && Array.isArray(stored.levels)
+      ? { width_mm: stored.width_mm ?? DEFAULT.width_mm, height_mm: stored.height_mm ?? DEFAULT.height_mm, levels: stored.levels }
+      : DEFAULT;
   const { width_mm: W, height_mm: H, levels } = layout;
 
   const [active, setActive] = useState(0);

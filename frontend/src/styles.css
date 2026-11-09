@@ -210,3 +210,18 @@ label.checkbox input { width: auto; }
 .plan-editing .plan-cell { pointer-events: none; }
 .plan .plan-cell.plan-hit rect { fill: rgba(249, 115, 22, 0.45); stroke: #f97316; stroke-width: 2; }
 .plan .plan-draft { fill: rgba(59, 130, 246, 0.25); stroke: #3b82f6; stroke-width: 1; stroke-dasharray: 4 3; }
+
+/* Accueil « À faire » */
+.home-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin: 0.5rem 0 0.9rem; }
+.home-action { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; padding: 0.9rem 0.4rem; border-radius: 12px; background: var(--card, #fff); border: 1px solid var(--border); text-decoration: none; color: inherit; text-align: center; }
+.home-action span { font-size: 1.5rem; }
+.home-action small { color: var(--muted, #777); font-size: 0.75rem; }
+.home-title { margin: 1rem 0 0.5rem; font-size: 1.1rem; }
+.todo-grid { display: grid; gap: 0.7rem; }
+.todo-card { background: var(--card, #fff); border: 1px solid var(--border); border-radius: 12px; padding: 0.8rem 0.9rem; }
+.todo-card header { display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.3rem; }
+.todo-card header strong { font-size: 1.6rem; color: #b45309; }
+.todo-card ul { list-style: none; padding: 0; margin: 0 0 0.3rem; }
+.todo-card li { padding: 0.15rem 0; }
+.todo-more { display: inline-block; margin-top: 0.3rem; }
+.inventory-line { margin-top: 1rem; }

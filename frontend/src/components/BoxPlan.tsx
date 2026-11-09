@@ -40,6 +40,7 @@ export default function BoxPlan({
   const [error, setError] = useState<string | null>(null);
   const [dims, setDims] = useState({ width: String(W), height: String(H) });
   // Case tracée en attente : on choisit le contenant qui la occupe.
+  const [newLevel, setNewLevel] = useState("");
   const [pending, setPending] = useState<Rect | null>(null);
   const [choice, setChoice] = useState("new");
   const [newName, setNewName] = useState("");
@@ -97,12 +98,16 @@ export default function BoxPlan({
   }
 
   async function addLevel() {
-    const name = window.prompt("Nom de l'étage (ex. Étage 1, Haut, Bas)");
-    if (!name?.trim()) return;
+    if (!newLevel.trim()) {
+      setError("Donnez un nom à l'étage.");
+      return;
+    }
+    const name = newLevel.trim();
     await run(async () => {
-      const child = await api.post<NodeDetail>("/nodes", { kind: "container", name: name.trim(), parent_id: node.id });
+      const child = await api.post<NodeDetail>("/nodes", { kind: "container", name, parent_id: node.id });
       await save(withLevels([...levels, { node_id: child.id, cells: [] }]));
       setActive(levels.length);
+      setNewLevel("");
     }, "Ajout de l'étage impossible.");
   }
 
@@ -273,7 +278,7 @@ export default function BoxPlan({
         </svg>
       ) : (
         <p className="muted">
-          Aucun étage. {canWrite ? "Cliquez sur « Modifier le plan », puis ajoutez un étage." : ""}
+          Aucun étage. {canWrite ? "Ajoutez un étage ci-dessous, puis tracez ses compartiments." : ""}
         </p>
       )}
 
@@ -283,6 +288,18 @@ export default function BoxPlan({
         </p>
       )}
 
+      {canWrite && (
+        <div className="row">
+          <input
+            placeholder="Nom de l'étage (ex. Étage 1, Haut, Bas)"
+            value={newLevel}
+            onChange={(e) => setNewLevel(e.target.value)}
+          />
+          <button type="button" disabled={busy} onClick={addLevel}>
+            + Ajouter un étage
+          </button>
+        </div>
+      )}
       {canWrite && (
         <div className="row">
           <button type="button" className="secondary" onClick={() => setEditing(!editing)}>
@@ -307,9 +324,6 @@ export default function BoxPlan({
             </button>
           </div>
           <div className="row">
-            <button type="button" className="secondary" disabled={busy} onClick={addLevel}>
-              + Ajouter un étage
-            </button>
             {level && (
               <button type="button" className="secondary danger" disabled={busy} onClick={removeLevel}>
                 Retirer l'étage affiché

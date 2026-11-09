@@ -20,6 +20,7 @@ export default function Home() {
   const [params, setParams] = useSearchParams();
   const selected = params.get("n");
   const select = useCallback((id: string) => setParams({ n: id }), [setParams]);
+  const [rootAdd, setRootAdd] = useState(false);
 
   return (
     <div className="explorer">
@@ -31,6 +32,20 @@ export default function Home() {
       </div>
       <div className="explorer-body">
         <aside className="explorer-tree card">
+          {canWrite && (
+            <button type="button" className="root-add" onClick={() => setRootAdd(!rootAdd)}>
+              {rootAdd ? "Fermer" : "+ Ajouter à la racine"}
+            </button>
+          )}
+          {rootAdd && (
+            <AddPanel
+              parent={null}
+              onDone={(created) => {
+                setRootAdd(false);
+                if (created) select(created);
+              }}
+            />
+          )}
           <Tree selected={selected} onSelect={select} />
         </aside>
         <section className="explorer-detail card">
@@ -336,8 +351,8 @@ function Detail({ id, onSelect, canWrite }: { id: string; onSelect: (id: string)
 }
 
 /** Ajouter ici : un emplacement, un contenant, ou un objet (avec sa quantité). */
-function AddPanel({ parent, onDone }: { parent: NodeDetail; onDone: (createdId: string | null) => void }) {
-  const [kind, setKind] = useState<"location" | "container" | "item">("container");
+function AddPanel({ parent, onDone }: { parent: NodeDetail | null; onDone: (createdId: string | null) => void }) {
+  const [kind, setKind] = useState<"location" | "container" | "item">(parent ? "container" : "location");
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [unit, setUnit] = useState("");
@@ -354,14 +369,14 @@ function AddPanel({ parent, onDone }: { parent: NodeDetail; onDone: (createdId: 
         const article = await api.post<{ id: string }>("/articles", { name: name.trim() });
         const item = await api.post<{ id: string }>("/nodes", {
           kind: "item",
-          parent_id: parent.id,
+          parent_id: parent?.id ?? null,
           article_id: article.id,
           quantity: quantity || "1",
           unit: unit || null,
         });
         onDone(item.id);
       } else {
-        const created = await api.post<{ id: string }>("/nodes", { kind, name: name.trim(), parent_id: parent.id });
+        const created = await api.post<{ id: string }>("/nodes", { kind, name: name.trim(), parent_id: parent?.id ?? null });
         onDone(created.id);
       }
     } catch (err) {
@@ -373,7 +388,7 @@ function AddPanel({ parent, onDone }: { parent: NodeDetail; onDone: (createdId: 
 
   return (
     <form className="form detail-card" onSubmit={submit}>
-      <h3>Ajouter dans « {parent.name ?? parent.article_name} »</h3>
+      <h3>{parent ? `Ajouter dans « ${parent.name ?? parent.article_name} »` : "Ajouter à la racine"}</h3>
       <select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
         <option value="container">Contenant (tiroir, boîte, casier…)</option>
         <option value="location">Emplacement (meuble, zone…)</option>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
+import PlanView, { loadPlanNames } from "../components/PlanView";
 import type { Node, NodeDetail, NodeKind } from "../types";
 
 /**
@@ -183,15 +184,17 @@ function TreeRow({
 function Detail({ id, onSelect }: { id: string; onSelect: (id: string) => void }) {
   const [node, setNode] = useState<NodeDetail | null>(null);
   const [kids, setKids] = useState<Node[]>([]);
+  const [names, setNames] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setNode(null);
     setError(null);
     Promise.all([api.get<NodeDetail>(`/nodes/${id}`), api.get<Node[]>(`/nodes?parent_id=${id}`)])
-      .then(([d, k]) => {
+      .then(async ([d, k]) => {
         setNode(d);
         setKids(k);
+        if (d.layout?.levels?.length) setNames(await loadPlanNames(d.id, d.layout));
       })
       .catch((e) => setError(e instanceof ApiError ? e.message : "Chargement impossible."));
   }, [id]);
@@ -199,43 +202,80 @@ function Detail({ id, onSelect }: { id: string; onSelect: (id: string) => void }
   if (error) return <p className="error">{error}</p>;
   if (!node) return <p className="muted">Chargement…</p>;
 
-  const path = node.breadcrumb.map((b) => b.name).join(" › ");
+  const path = node.breadcrumb.slice(0, -1).map((b) => b.name).join(" › ");
   const address = node.slug ?? node.id;
+  const hasPlan = Boolean(node.layout?.levels?.length);
+  const isBox = node.kind === "container" && hasPlan;
+
   return (
-    <>
-      <p className="muted small">{path}</p>
-      <h2>
-        {ICON[node.kind]} {node.name ?? node.article_name ?? "Sans nom"}
-      </h2>
-      <p className="muted">
-        {KIND_LABEL[node.kind]}
-        {node.kind === "item" && node.quantity ? ` · ${formatQty(node.quantity, node.unit)}` : ""}
-        {node.qr_code ? ` · étiquette ${node.qr_code}` : " · sans étiquette"}
-      </p>
-      <div className="row">
-        <Link className="button" to={`/nodes/${address}`}>
-          Ouvrir la fiche
-        </Link>
-        <Link className="button secondary" to={`/nodes/${address}`}>
-          Ajouter ou déplacer
-        </Link>
+    <div className="detail-cards">
+      <div className="detail-head">
+        <div>
+          {path && <p className="muted small">{path}</p>}
+          <h2>
+            {ICON[node.kind]} {node.name ?? node.article_name ?? "Sans nom"}
+          </h2>
+          <span className={`kind-chip kind-${node.kind}`}>{KIND_LABEL[node.kind]}</span>
+          {node.kind === "item" && node.quantity && (
+            <span className="muted"> · {formatQty(node.quantity, node.unit)}</span>
+          )}
+          {node.qr_code && <span className="ribbon">{node.qr_code}</span>}
+        </div>
+        <div className="detail-actions">
+          <Link className="button" to={`/nodes/${address}`}>
+            Ouvrir la fiche
+          </Link>
+          <Link className="button secondary" to={`/nodes/${address}`}>
+            Déplacer
+          </Link>
+        </div>
       </div>
 
       {node.kind !== "item" && (
-        <>
+        <section className="detail-card">
           <h3>Contenu ({kids.length})</h3>
-          {kids.length === 0 && <p className="muted">Vide.</p>}
-          <ul className="list">
-            {kids.map((k) => (
-              <li key={k.id}>
-                <button type="button" className="linklike" onClick={() => onSelect(k.id)}>
-                  {ICON[k.kind]} {k.name ?? "Sans nom"}
+          {kids.length === 0 ? (
+            <p className="muted small">Vide. Ajoutez-y un objet depuis la fiche.</p>
+          ) : (
+            <div className="content-grid">
+              {kids.map((k) => (
+                <button key={k.id} type="button" className="content-card" onClick={() => onSelect(k.id)}>
+                  <span aria-hidden>{ICON[k.kind]}</span>
+                  <strong>{k.name ?? "Sans nom"}</strong>
+                  <small className="muted">{KIND_LABEL[k.kind]}</small>
                 </button>
-              </li>
-            ))}
-          </ul>
-        </>
+              ))}
+            </div>
+          )}
+        </section>
       )}
-    </>
+
+      {hasPlan && node.layout && (
+        <section className="detail-card">
+          <h3>Plan {isBox ? "de la boîte" : ""}</h3>
+          <PlanView layout={node.layout} names={names} onCellClick={onSelect} />
+        </section>
+      )}
+
+      <section className="detail-card">
+        <h3>Infos</h3>
+        <dl className="attrs">
+          <div>
+            <dt>Chemin</dt>
+            <dd>{node.breadcrumb.map((b) => b.name).join(" › ")}</dd>
+          </div>
+          <div>
+            <dt>Étiquette</dt>
+            <dd>{node.qr_code ?? "aucune"}</dd>
+          </div>
+          {node.kind === "item" && node.article_name && (
+            <div>
+              <dt>Article</dt>
+              <dd>{node.article_name}</dd>
+            </div>
+          )}
+        </dl>
+      </section>
+    </div>
   );
 }

@@ -33,6 +33,7 @@ sed -i 's/^# *fr_FR.UTF-8 UTF-8/fr_FR.UTF-8 UTF-8/' /etc/locale.gen
 locale-gen && update-locale LANG=fr_FR.UTF-8
 export LANG=fr_FR.UTF-8 LC_ALL=fr_FR.UTF-8
 apt install -y postgresql caddy python3-venv git rsync nodejs npm curl
+apt install -y tesseract-ocr tesseract-ocr-fra      # IA : lecture du texte (facultatif)
 ```
 
 Vérifier : `psql -l` doit montrer l'encodage `UTF8` (si `SQL_ASCII`, base encore vide :
@@ -56,7 +57,7 @@ L'authentification PostgreSQL se fait par socket Unix (« peer ») : aucun mot d
 ```bash
 runuser -u myworkshop -- git clone https://github.com/daniellouvel/BDD_Maison.git /opt/myworkshop/app
 runuser -u myworkshop -- python3 -m venv /opt/myworkshop/venv
-runuser -u myworkshop -- /opt/myworkshop/venv/bin/pip install /opt/myworkshop/app/backend
+runuser -u myworkshop -- /opt/myworkshop/venv/bin/pip install "/opt/myworkshop/app/backend[ai]"
 cp /opt/myworkshop/app/deploy/myworkshop.env.example /etc/myworkshop/myworkshop.env
 chmod 640 /etc/myworkshop/myworkshop.env && chown root:myworkshop /etc/myworkshop/myworkshop.env
 
@@ -148,12 +149,29 @@ désactiver la protection pour ce seul nom si la box le permet).
 
 ```bash
 cd /opt/myworkshop/app && runuser -u myworkshop -- git pull
-runuser -u myworkshop -- /opt/myworkshop/venv/bin/pip install ./backend
+runuser -u myworkshop -- /opt/myworkshop/venv/bin/pip install "./backend[ai]"
 cd backend && set -a && . /etc/myworkshop/myworkshop.env && set +a \
   && runuser -u myworkshop -- env MW_DATABASE_URL="$MW_DATABASE_URL" /opt/myworkshop/venv/bin/alembic upgrade head
 cd ../frontend && runuser -u myworkshop -- npm ci && runuser -u myworkshop -- npm run build
+# Si deploy/systemd a changé :
+cp /opt/myworkshop/app/deploy/systemd/*.service /opt/myworkshop/app/deploy/systemd/*.timer /etc/systemd/system/ && systemctl daemon-reload
 systemctl restart myworkshop-api
 ```
+
+Comparer aussi `/etc/myworkshop/myworkshop.env` avec `deploy/myworkshop.env.example` : les
+nouveaux réglages n'y sont pas ajoutés automatiquement.
+
+## 9. IA (facultative)
+
+- **Lecture du texte** : paquets `tesseract-ocr tesseract-ocr-fra` (étape 2).
+- **Recherche par photo** : extra Python `[ai]` (étape 4). Au premier démarrage, l'API télécharge
+  le modèle CLIP (~340 Mo) dans `/var/lib/myworkshop/data/models` ; compter ~500 Mo de RAM en
+  plus. Les photos ajoutées avant l'installation de l'IA s'indexent avec :
+  `myworkshop-admin index-images`.
+- **Identification externe** : renseigner `MW_AI_REMOTE_URL`, `MW_AI_REMOTE_MODEL`,
+  `MW_AI_REMOTE_KEY` (exemples dans `deploy/myworkshop.env.example`), redémarrer l'API, puis un
+  administrateur l'active dans **Accueil → Réglages**. Sans ces réglages, rien ne sort du serveur.
+- Vérifier : **Accueil → Réglages** indique ce qui est disponible.
 
 ## 8. Sauvegardes et restauration
 

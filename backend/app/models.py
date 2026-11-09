@@ -13,6 +13,7 @@ from sqlalchemy import (
     Identity,
     Index,
     Integer,
+    LargeBinary,
     Numeric,
     String,
     Text,
@@ -297,6 +298,42 @@ class AppSetting(Base):
 
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     value: Mapped[dict[str, Any]] = mapped_column(JSON)
+
+
+AI_SUGGESTION_STATUSES = ("pending", "accepted", "rejected")
+
+
+class AiSuggestion(Base):
+    """Résultat brut d'une analyse IA. Jamais appliqué sans validation de l'utilisateur."""
+
+    __tablename__ = "ai_suggestions"
+    __table_args__ = (
+        CheckConstraint(_in("status", AI_SUGGESTION_STATUSES), name="ck_ai_suggestions_status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    providers: Mapped[list[str]] = mapped_column(JSON, default=list)
+    result: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    article_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("articles.id", ondelete="SET NULL")
+    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    decided_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ImageEmbedding(Base):
+    """Empreinte visuelle d'une photo (vecteur float32 normalisé), pour la recherche par photo."""
+
+    __tablename__ = "image_embeddings"
+
+    attachment_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("attachments.id", ondelete="CASCADE"), primary_key=True
+    )
+    model: Mapped[str] = mapped_column(String(120))
+    vector: Mapped[bytes] = mapped_column(LargeBinary)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class AuditLog(Base):

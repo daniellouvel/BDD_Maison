@@ -2,8 +2,9 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError } from "../api";
 import LabelPicker from "../components/LabelPicker";
+import PhotoAnalysis from "../components/PhotoAnalysis";
 import { categoryLabel, inheritedFields } from "../fields";
-import type { Article, Category, FieldDef, NodeDetail } from "../types";
+import type { Analysis, Article, Category, FieldDef, Identification, NodeDetail } from "../types";
 
 type AttrValue = string | number | boolean;
 
@@ -32,6 +33,8 @@ export default function ArticleNew() {
   const [photo, setPhoto] = useState<File | null>(null);
   const [labelCode, setLabelCode] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [aiApplied, setAiApplied] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -64,11 +67,38 @@ export default function ArticleNew() {
     return () => window.clearTimeout(timer);
   }, [name, existing]);
 
+  function applyIdentification(ident: Identification) {
+    setExisting(null);
+    if (ident.name) setName(ident.name);
+    if (ident.category_id) setCategoryId(ident.category_id);
+    if (ident.brand) setBrand(ident.brand);
+    if (ident.mpn) setMpn(ident.mpn);
+    if (ident.description) setDescription(ident.description);
+    if (ident.keywords.length) setKeywords(ident.keywords.join(" "));
+    setDetailed(true);
+    setAiApplied(true);
+  }
+
+  function applyReference(reference: string) {
+    setExisting(null);
+    setMpn(reference);
+    if (!name.trim()) setName(reference);
+    setDetailed(true);
+    setAiApplied(true);
+  }
+
+  function pickExisting(article: Article) {
+    setExisting(article);
+    setAiApplied(true);
+  }
+
   function reset() {
     setName("");
     setExisting(null);
     setQuantity("1");
     setPhoto(null);
+    setAnalysis(null);
+    setAiApplied(false);
     setLabelCode(null);
     setSaved(null);
     setError(null);
@@ -123,6 +153,15 @@ export default function ArticleNew() {
         form.append("file", photo);
         await api.post("/attachments", form);
       }
+      if (analysis) {
+        // Trace de ce qui a été fait des suggestions ; sans importance pour l'utilisateur.
+        api
+          .post(`/ai/suggestions/${analysis.suggestion_id}/decision`, {
+            status: aiApplied ? "accepted" : "rejected",
+            article_id: aiApplied ? article.id : null,
+          })
+          .catch(() => undefined);
+      }
       setSaved(article);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Enregistrement impossible.");
@@ -156,6 +195,23 @@ export default function ArticleNew() {
         Emplacement :{" "}
         {parent ? parent.breadcrumb.map((b) => b.name).join(" › ") : "non localisé (à ranger plus tard)"}
       </p>
+
+      <label>
+        Photo
+        <input type="file" accept="image/*" capture="environment" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
+      </label>
+      {photo && (
+        <PhotoAnalysis
+          photo={photo}
+          onApply={applyIdentification}
+          onUseReference={applyReference}
+          onPickExisting={pickExisting}
+          onAnalysis={(a) => {
+            setAnalysis(a);
+            setAiApplied(false);
+          }}
+        />
+      )}
 
       <label>
         Nom *
@@ -282,11 +338,6 @@ export default function ArticleNew() {
           )}
         </>
       )}
-
-      <label>
-        Photo
-        <input type="file" accept="image/*" capture="environment" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
-      </label>
 
       {quantity !== "" && <LabelPicker value={labelCode} onChange={setLabelCode} />}
 

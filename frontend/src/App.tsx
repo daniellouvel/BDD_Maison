@@ -11,6 +11,7 @@ import Nodes from "./screens/Nodes";
 import QrManager from "./screens/QrManager";
 import Scan from "./screens/Scan";
 import Search from "./screens/Search";
+import Settings from "./screens/Settings";
 import type { User } from "./types";
 
 type ServerStatus = "online" | "server-down" | "offline";
@@ -99,6 +100,7 @@ export default function App() {
           <Route path="/scan" element={<Scan />} />
           <Route path="/qr" element={<QrManager />} />
           <Route path="/qr/labels/:code" element={<LabelDetail />} />
+          <Route path="/reglages" element={<Settings />} />
           {/* Cible des QR encodant une URL : ouvre directement l'élément étiqueté */}
           <Route path="/l/:code" element={<LabelDetail redirectAssigned />} />
           <Route path="*" element={<p className="muted">Page introuvable.</p>} />

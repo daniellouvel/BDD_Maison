@@ -38,17 +38,22 @@ def _flatten_to_rgb(img: Image.Image) -> Image.Image:
     return img.convert("RGB")
 
 
-def process_photo(raw: bytes) -> tuple[bytes, bytes]:
-    """Retourne (photo, miniature) en JPEG. Supprime l'EXIF (position GPS, etc.)."""
+def open_image(raw: bytes) -> Image.Image:
+    """Image RGB redressée selon l'EXIF, réduite à PHOTO_MAX_SIDE. 422 si illisible."""
     try:
         Image.open(io.BytesIO(raw)).verify()
         img = Image.open(io.BytesIO(raw))
         img = ImageOps.exif_transpose(img)
+        img = _flatten_to_rgb(img)
     except (UnidentifiedImageError, OSError, SyntaxError) as exc:
         raise ApiError(422, "invalid_image", "Image illisible ou format non pris en charge.") from exc
-
-    img = _flatten_to_rgb(img)
     img.thumbnail((PHOTO_MAX_SIDE, PHOTO_MAX_SIDE))
+    return img
+
+
+def process_photo(raw: bytes) -> tuple[bytes, bytes]:
+    """Retourne (photo, miniature) en JPEG. Supprime l'EXIF (position GPS, etc.)."""
+    img = open_image(raw)
 
     photo_buf = io.BytesIO()
     img.save(photo_buf, format="JPEG", quality=88)

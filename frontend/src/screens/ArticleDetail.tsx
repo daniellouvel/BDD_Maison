@@ -3,8 +3,9 @@ import { Link, useParams } from "react-router-dom";
 import { api, ApiError, fileUrl, formatQty, thumbUrl } from "../api";
 import { useAuth } from "../auth";
 import MovementForm from "../components/MovementForm";
+import SimilarList from "../components/SimilarList";
 import { categoryLabel, inheritedFields } from "../fields";
-import type { ArticleDetail, Attachment, Category, FieldDef } from "../types";
+import type { ArticleDetail, Attachment, Category, FieldDef, SimilarHit } from "../types";
 
 export default function ArticleDetailScreen() {
   const { id } = useParams();
@@ -16,6 +17,7 @@ export default function ArticleDetailScreen() {
   const [openMovement, setOpenMovement] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [similar, setSimilar] = useState<SimilarHit[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -28,6 +30,8 @@ export default function ArticleDetailScreen() {
       setAttachments(files);
       setCategories(cats);
       setFields(await inheritedFields(cats, a.category_id));
+      // Empreintes déjà calculées : réponse rapide, et liste vide si l'IA est absente.
+      api.get<SimilarHit[]>(`/articles/${id}/similar`).then(setSimilar).catch(() => setSimilar([]));
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Chargement impossible.");
     }
@@ -175,6 +179,13 @@ export default function ArticleDetailScreen() {
         )}
         {error && <p className="error">{error}</p>}
       </section>
+
+      {similar.length > 0 && (
+        <section className="card">
+          <h2>Objets ressemblants</h2>
+          <SimilarList hits={similar} />
+        </section>
+      )}
     </>
   );
 }

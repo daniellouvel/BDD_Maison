@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
-import type { SearchHit } from "../types";
+import SimilarList from "../components/SimilarList";
+import type { AiStatus, SearchHit, SimilarHit } from "../types";
 
 export default function Search() {
   const [params, setParams] = useSearchParams();
@@ -9,6 +10,32 @@ export default function Search() {
   const [input, setInput] = useState(query);
   const [hits, setHits] = useState<SearchHit[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [photoSearch, setPhotoSearch] = useState(false);
+  const [photoHits, setPhotoHits] = useState<SimilarHit[] | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+
+  useEffect(() => {
+    api
+      .get<AiStatus>("/ai/status")
+      .then((s) => setPhotoSearch(s.embeddings))
+      .catch(() => setPhotoSearch(false));
+  }, []);
+
+  async function searchByPhoto(file: File | undefined) {
+    if (!file) return;
+    setPhotoBusy(true);
+    setError(null);
+    setParams({});
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      setPhotoHits(await api.post<SimilarHit[]>("/search/by-image", form));
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Recherche impossible.");
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
 
   useEffect(() => {
     setInput(query);
@@ -25,6 +52,7 @@ export default function Search() {
 
   function submit(e: FormEvent) {
     e.preventDefault();
+    setPhotoHits(null);
     setParams(input.trim() ? { q: input.trim() } : {});
   }
 
@@ -41,7 +69,31 @@ export default function Search() {
         />
         <button type="submit">OK</button>
       </form>
+      {photoSearch && (
+        <label className="filebutton">
+          {photoBusy ? "Recherche…" : "Rechercher avec une photo"}
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(e) => {
+              searchByPhoto(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+        </label>
+      )}
       {error && <p className="error">{error}</p>}
+      {photoHits && (
+        <section className="card">
+          <h2>Objets qui ressemblent à la photo</h2>
+          {photoHits.length === 0 ? (
+            <p className="muted">Aucun objet ressemblant parmi les photos de l'inventaire.</p>
+          ) : (
+            <SimilarList hits={photoHits} />
+          )}
+        </section>
+      )}
       {hits && hits.length === 0 && <p className="muted">Aucun résultat pour « {query} ».</p>}
       {hits?.map((hit) => (
         <article key={hit.article.id} className="card">

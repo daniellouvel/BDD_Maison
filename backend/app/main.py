@@ -1,17 +1,34 @@
-from collections.abc import Awaitable, Callable
+import threading
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy import text
 
-from app.api import auth, catalog, files, nodes, qr, search, stock
+from app.api import ai, auth, catalog, files, nodes, qr, search, stock
 from app.api.deps import CSRF_HEADER
 from app.core.db import get_session_factory
 from app.core.errors import ApiError
+from app.services import ai as ai_service
 
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
-app = FastAPI(title="MyWorkshop", version="0.2.0", docs_url="/api/docs", openapi_url="/api/openapi.json")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    # Chargement du modèle de recherche par photo en arrière-plan : l'API répond tout de suite.
+    threading.Thread(target=ai_service.warm_up, daemon=True, name="ai-warm-up").start()
+    yield
+
+
+app = FastAPI(
+    title="MyWorkshop",
+    version="0.4.0",
+    docs_url="/api/docs",
+    openapi_url="/api/openapi.json",
+    lifespan=lifespan,
+)
 
 
 @app.exception_handler(ApiError)
@@ -35,7 +52,7 @@ async def csrf_guard(
 
 
 PREFIX = "/api/v1"
-for router_module in (auth, catalog, nodes, stock, files, search, qr):
+for router_module in (auth, catalog, nodes, stock, files, search, qr, ai):
     app.include_router(router_module.router, prefix=PREFIX)
 
 

@@ -90,7 +90,7 @@ export default function Home() {
       )}
 
       <p className="muted small">
-        Connecté : {user.username} ({user.role}) ·{" "}
+        Connecté : {user.username} ({user.role}) · <Link to="/reglages">Réglages</Link> ·{" "}
         <button type="button" className="linklike" onClick={logout}>
           Se déconnecter
         </button>

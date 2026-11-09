@@ -1,7 +1,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, Form, UploadFile
 from fastapi.responses import FileResponse
 
 from app.api.deps import CurrentUser, DbSession, Writer
@@ -9,6 +9,7 @@ from app.core.config import get_settings
 from app.core.errors import ApiError, not_found
 from app.models import Attachment
 from app.schemas import AttachmentOut
+from app.services import ai as ai_service
 from app.services import files as file_service
 
 router = APIRouter(prefix="/attachments", tags=["fichiers"])
@@ -16,7 +17,7 @@ router = APIRouter(prefix="/attachments", tags=["fichiers"])
 FILE_KINDS = {"photo", "datasheet", "document"}
 
 
-def _read_upload(upload: UploadFile) -> bytes:
+def read_upload(upload: UploadFile) -> bytes:
     limit = get_settings().max_upload_bytes
     raw = upload.file.read(limit + 1)
     if len(raw) > limit:
@@ -28,6 +29,7 @@ def _read_upload(upload: UploadFile) -> bytes:
 def upload(
     db: DbSession,
     user: Writer,
+    background: BackgroundTasks,
     kind: Annotated[str, Form()],
     article_id: Annotated[uuid.UUID | None, Form()] = None,
     node_id: Annotated[uuid.UUID | None, Form()] = None,
@@ -45,11 +47,14 @@ def upload(
         raise ApiError(422, "invalid_kind", "Type de fichier non pris en charge.")
     if file is None:
         raise ApiError(422, "file_required", "Un fichier est requis.")
-    raw = _read_upload(file)
+    raw = read_upload(file)
     if kind == "photo":
-        return file_service.add_photo(
+        attachment = file_service.add_photo(
             db, raw=raw, article_id=article_id, node_id=node_id, title=title, actor=user
         )
+        # Empreinte pour la recherche par photo, après la réponse (le modèle peut être lent).
+        background.add_task(ai_service.index_attachment_id, attachment.id)
+        return attachment
     return file_service.add_pdf(
         db, kind=kind, raw=raw, article_id=article_id, node_id=node_id, title=title, actor=user
     )

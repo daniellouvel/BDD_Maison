@@ -9,7 +9,10 @@ User=myworkshop
 Group=myworkshop
 WorkingDirectory=/opt/myworkshop/app/backend
 EnvironmentFile=/etc/myworkshop/myworkshop.env
-ExecStart=/opt/myworkshop/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --proxy-headers --workers 2
+# Cache du téléchargement des modèles IA : seul /var/lib/myworkshop est inscriptible (ProtectSystem).
+Environment=HF_HOME=/var/lib/myworkshop/data/models/hf
+# Un seul processus : chaque processus chargerait son propre modèle CLIP (~500 Mo de RAM).
+ExecStart=/opt/myworkshop/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --proxy-headers --workers 1
 Restart=on-failure
 RestartSec=5
 

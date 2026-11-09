@@ -188,3 +188,14 @@ code { font-size: 0.85em; overflow-wrap: anywhere; }
 
 .login { max-width: 360px; margin: 15vh auto 0; display: flex; flex-direction: column; gap: 0.75rem; }
 .login label { display: flex; flex-direction: column; gap: 0.25rem; }
+
+/* --- IA (phase 4) --- */
+.ai-panel { border: 1px dashed var(--border); border-radius: 8px; padding: 0.6rem; display: grid; gap: 0.5rem; }
+.ai-block { display: grid; gap: 0.3rem; padding-top: 0.4rem; border-top: 1px solid var(--border); }
+.ai-block > button { justify-self: start; }
+.similar { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
+.similar li { display: flex; align-items: center; gap: 0.6rem; }
+.similar img { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; flex: none; background: var(--border); }
+pre.ocr { white-space: pre-wrap; word-break: break-word; font-size: 0.8rem; background: var(--bg); padding: 0.5rem; border-radius: 6px; max-height: 12rem; overflow: auto; }
+label.checkbox { display: flex; align-items: center; gap: 0.5rem; }
+label.checkbox input { width: auto; }

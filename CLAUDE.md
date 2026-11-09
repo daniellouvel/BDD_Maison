@@ -32,6 +32,9 @@ Frontend (`frontend/`) : `npm run dev` (Vite :5173, proxy `/api` → :8000), `np
   `wsl -u root -e sh -c "service postgresql start; exec sleep 1800"`.
 - L'API lancée via `.claude/launch.json` n'a pas `--reload` : la redémarrer après une modification
   du backend.
+- IA en local : `pip install -e .[dev,ai]` ; le modèle CLIP est dans `backend/data/models`.
+  Tesseract est installé dans WSL et appelé par un relais `backend/scripts/tesseract-wsl.cmd`
+  désigné par `MW_AI_TESSERACT_CMD` dans `.env`. Les tests désactivent CLIP et le service externe.
 - `backend/.env` (ignoré par Git) contient `MW_DATABASE_URL`, `MW_TEST_DATABASE_URL` et le mot de
   passe du compte de dev `dev`. Pytest ne lit pas `.env` : exporter `MW_TEST_DATABASE_URL` à la main.
 - Les tests exécutent `alembic downgrade base` puis `upgrade head`, et vident toutes les tables après
@@ -65,6 +68,16 @@ Frontend (`frontend/`) : `npm run dev` (Vite :5173, proxy `/api` → :8000), `np
   regénéré à la demande depuis `print_items` + le gabarit figé dans `print_sheets.layout`.
 - Les tests QR décodent réellement la planche PDF (pymupdf + zxing-cpp) : si le rendu change,
   `test_printed_pdf_contains_65_readable_qr_codes` doit continuer de passer.
+- **IA** (`app/ai/`, `services/ai.py`) : fournisseurs derrière des `Protocol` (`ai/base.py`),
+  choisis par `ai/registry.py` (les tests les remplacent par des faux via `registry.override`).
+  Seul `services/ai.py` importe `app.ai`. L'IA n'écrit jamais dans le catalogue : `POST /ai/analyze`
+  renvoie des suggestions (stockées dans `ai_suggestions`), le formulaire les applique sur clic.
+  Tout fournisseur peut manquer ou échouer (`AiUnavailable`) : l'analyse renvoie alors un
+  avertissement, jamais une erreur. L'identification externe (format OpenAI, ex. Gemini gratuit)
+  exige la configuration `MW_AI_REMOTE_*` **et** l'activation admin (`app_settings` clé `ai`).
+  Empreintes CLIP : float32 normalisés en `bytea` (`image_embeddings`), calculées en tâche de fond
+  après l'envoi d'une photo, comparées avec numpy (pas de pgvector). Changer de modèle demande
+  `python -m app.cli index-images`.
 - Champs personnalisés : `field_defs` par catégorie, hérités des catégories parentes ; les valeurs
   sont dans `articles.attributes` (JSON) et validées par `services/catalog.validate_attributes`.
 - Photos : ré-encodées en JPEG (EXIF supprimé) + miniature 512 px dans `MW_DATA_DIR`.

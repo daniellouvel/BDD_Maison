@@ -351,3 +351,58 @@ class DashboardOut(BaseModel):
     low_stock: list[ArticleOut]
     unlocated: list[NodeDetail]
     recent_movements: list[MovementOut]
+
+
+# --- IA (phase 4) ---------------------------------------------------------------------------------
+
+
+class AiStatus(BaseModel):
+    ocr: bool
+    embeddings: bool
+    remote_configured: bool
+    remote_enabled: bool
+    remote_host: str | None
+
+
+class AiSettingsIn(BaseModel):
+    remote_enabled: bool
+
+
+class IdentificationOut(BaseModel):
+    name: str | None = None
+    category: str | None = None
+    category_id: uuid.UUID | None = None
+    brand: str | None = None
+    mpn: str | None = None
+    description: str | None = None
+    keywords: list[str] = []
+    confidence: float | None = None
+
+
+class PartReference(BaseModel):
+    """Référence repérée dans le texte lu (ex. marquage d'un composant)."""
+
+    reference: str
+    datasheet_url: str
+    matches: list[ArticleOut]
+
+
+class SimilarHit(BaseModel):
+    article: ArticleOut
+    score: float
+    attachment_id: uuid.UUID
+
+
+class AnalysisOut(BaseModel):
+    suggestion_id: uuid.UUID
+    ocr_text: str | None = None
+    parts: list[PartReference] = []
+    identification: IdentificationOut | None = None
+    similar: list[SimilarHit] = []
+    # Fonctions demandées mais indisponibles (Tesseract absent, quota dépassé…), messages en français.
+    warnings: list[str] = []
+
+
+class SuggestionDecision(BaseModel):
+    status: Literal["accepted", "rejected"]
+    article_id: uuid.UUID | None = None

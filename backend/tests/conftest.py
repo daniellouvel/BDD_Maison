@@ -28,6 +28,9 @@ def _configure(tmp_path_factory: pytest.TempPathFactory) -> Iterator[None]:
     os.environ["MW_DATABASE_URL"] = TEST_DB
     os.environ["MW_DATA_DIR"] = str(tmp_path_factory.mktemp("data"))
     os.environ["MW_COOKIE_SECURE"] = "false"
+    # IA : aucun modèle ni service réel pendant les tests (fournisseurs factices via override).
+    os.environ["MW_AI_EMBEDDINGS"] = "false"
+    os.environ["MW_AI_REMOTE_URL"] = ""
 
     from app.core.config import get_settings
     from app.core.db import get_engine, get_session_factory
@@ -45,13 +48,15 @@ def _configure(tmp_path_factory: pytest.TempPathFactory) -> Iterator[None]:
 
 @pytest.fixture(autouse=True)
 def _clean_tables() -> Iterator[None]:
+    from app.ai import registry
     from app.core.db import get_engine
 
     yield
+    registry.clear_overrides()
     with get_engine().begin() as conn:
         conn.execute(
             text(
-                "TRUNCATE qr_events, print_items, print_sheets, qr_labels, app_settings, "
+                "TRUNCATE ai_suggestions, image_embeddings, qr_events, print_items, print_sheets, qr_labels, app_settings, "
                 "audit_log, attachments, movements, nodes, node_types, articles, "
                 "field_defs, categories, sessions, users RESTART IDENTITY CASCADE"
             )

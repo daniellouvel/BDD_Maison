@@ -473,7 +473,11 @@ Les maquettes graphiques détaillées (captures visuelles) seront produites en p
 2. **Hébergement** : *décidé* : installation native sous Debian 13 (§4.2).
 3. **Utilisateurs** : un seul compte administrateur, ou plusieurs personnes (famille) avec des rôles ?
 4. **Planches d'étiquettes** : référence exacte de la planche achetée (dimensions de l'étiquette et marges) pour la calibration.
-5. **IA** : acceptez-vous l'envoi de photos vers un service externe gratuit (opt-in) ou souhaitez-vous rester 100 % local, quitte à être moins précis ?
+5. **IA** : *décidé* : mixte et gratuit. Lecture du texte (Tesseract) et recherche par photo (CLIP
+   via fastembed, CPU) sur le serveur ; identification par un service externe gratuit au format
+   compatible OpenAI (ex. Gemini), désactivée par défaut et activée par un administrateur.
+   Les empreintes sont des vecteurs float32 en `bytea`, comparés en mémoire avec numpy : suffisant
+   pour quelques milliers de photos, sans dépendre de l'extension pgvector.
 6. **Données existantes** : avez-vous un export (CSV, tableur, notes) de votre inventaire actuel à importer ?
 7. **Stock négatif** : interdit (proposé) ou autorisé avec alerte ?
 8. **Synchronisation** : faut-il la livrer avant la phase QR (utile si le réseau est faible dans l'atelier) ou après (proposé) ?

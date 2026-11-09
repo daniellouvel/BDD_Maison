@@ -1,8 +1,22 @@
 # MyWorkshop
 
 Inventaire auto-hébergé pour l'atelier et la maison : articles, stocks par boîte, emplacements
-hiérarchiques, photos, recherche, étiquettes QR universelles. IA, projets et mode hors ligne
-arrivent dans les phases suivantes (voir [docs/phase1-conception.md](docs/phase1-conception.md)).
+hiérarchiques, photos, recherche, étiquettes QR universelles, identification assistée par IA.
+Projets et mode hors ligne arrivent en phase 5 (voir [docs/phase1-conception.md](docs/phase1-conception.md)).
+
+## IA (facultative, gratuite)
+
+L'IA ne fait que **proposer** : rien n'est enregistré sans un clic, la saisie manuelle reste complète.
+
+- **Sur le serveur** (rien ne sort de la maison) :
+  - lecture du texte d'une photo (Tesseract), repérage des références de composants (`LM317T`,
+    `1N4007`…), lien vers la datasheet et articles déjà en stock ;
+  - recherche par photo et « objets ressemblants » (modèle CLIP local, CPU, ~340 Mo téléchargés au
+    premier démarrage).
+- **Identification par un service externe** (nommer l'objet, proposer catégorie, marque,
+  description) : format compatible OpenAI, par exemple l'offre gratuite de Google Gemini.
+  Désactivée par défaut ; un administrateur l'active dans **Accueil → Réglages**. Avec une offre
+  gratuite, le service peut utiliser les photos pour entraîner ses modèles.
 
 ## Étiquettes QR
 
@@ -22,7 +36,7 @@ arrivent dans les phases suivantes (voir [docs/phase1-conception.md](docs/phase1
 | 1 | Conception | Validée |
 | 2 | Socle : auth, catalogue, emplacements, stock, photos, recherche, déploiement | Fait |
 | 3 | QR codes : planches de 65, doublons, affectation, déplacement par scan | Fait |
-| 4 | IA | À faire |
+| 4 | IA : lecture du texte, références, recherche par photo, identification externe (opt-in) | Fait, tests réels à faire |
 | 5 | Projets, prêts, achats, hors ligne, accès distant | À faire |
 
 ## Développement local (Windows)
@@ -38,7 +52,7 @@ Backend (dans `backend/`, avec un fichier `.env` contenant `MW_DATABASE_URL`, `M
 
 ```bash
 py -3.13 -m venv .venv
-.venv\Scripts\pip install -e .[dev]
+.venv\Scripts\pip install -e .[dev,ai]
 .venv\Scripts\alembic upgrade head
 .venv\Scripts\python -m app.cli create-user --username moi --role admin
 .venv\Scripts\uvicorn app.main:app --reload
@@ -57,6 +71,10 @@ Tests (base dédiée, entièrement réinitialisée à chaque lancement) :
 set MW_TEST_DATABASE_URL=postgresql+psycopg://myworkshop:MDP@127.0.0.1:5432/myworkshop_test
 .venv\Scripts\python -m pytest
 ```
+
+Tesseract n'existe pas sous Windows dans cet environnement : l'installer dans WSL
+(`apt install tesseract-ocr tesseract-ocr-fra`) et pointer `MW_AI_TESSERACT_CMD` (dans `.env`)
+vers `backend/scripts/tesseract-wsl.cmd` (chemin absolu).
 
 ## Installation sur Proxmox
 

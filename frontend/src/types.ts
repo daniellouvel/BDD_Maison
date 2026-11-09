@@ -179,3 +179,45 @@ export interface Dashboard {
   unlocated: NodeDetail[];
   recent_movements: Movement[];
 }
+
+// --- IA (phase 4) ---
+
+export interface AiStatus {
+  ocr: boolean;
+  embeddings: boolean;
+  remote_configured: boolean;
+  remote_enabled: boolean;
+  remote_host: string | null;
+}
+
+export interface Identification {
+  name: string | null;
+  category: string | null;
+  category_id: string | null;
+  brand: string | null;
+  mpn: string | null;
+  description: string | null;
+  keywords: string[];
+  confidence: number | null;
+}
+
+export interface PartReference {
+  reference: string;
+  datasheet_url: string;
+  matches: Article[];
+}
+
+export interface SimilarHit {
+  article: Article;
+  score: number;
+  attachment_id: string;
+}
+
+export interface Analysis {
+  suggestion_id: string;
+  ocr_text: string | null;
+  parts: PartReference[];
+  identification: Identification | null;
+  similar: SimilarHit[];
+  warnings: string[];
+}

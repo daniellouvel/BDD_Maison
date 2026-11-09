@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
+import LabelPicker from "../components/LabelPicker";
 import type { Node, NodeDetail, NodeKind, SearchHit } from "../types";
 
 /**
@@ -263,7 +264,7 @@ async function articleNames(list: Node[], known: Names): Promise<Names> {
 
 /* ---------- Détail et actions ---------- */
 
-type Panel = "none" | "add" | "edit";
+type Panel = "none" | "add" | "edit" | "label";
 
 type Moving = { id: string; name: string; version: number };
 
@@ -402,9 +403,35 @@ function Detail({
           <button type="button" className="secondary" onClick={() => setPanel(panel === "edit" ? "none" : "edit")}>
             Modifier
           </button>
+          {!node.qr_code && (
+            <button type="button" className="secondary" onClick={() => setPanel(panel === "label" ? "none" : "label")}>
+              Associer une étiquette
+            </button>
+          )}
           <button type="button" className="secondary danger" onClick={remove}>
             Supprimer
           </button>
+        </div>
+      )}
+
+      {panel === "label" && node && (
+        <div className="form detail-card">
+          <h3>Associer une étiquette à « {node.name ?? node.article_name} »</h3>
+          <p className="muted small">Scannez une étiquette vierge, ou saisissez son code (ex. QR-000001).</p>
+          <LabelPicker
+            value={null}
+            onChange={async (code) => {
+              if (!code) return;
+              try {
+                await api.post(`/qr/labels/${code}/assign`, { node_id: node.id });
+                setPanel("none");
+                load();
+                onChanged();
+              } catch (e) {
+                setError(e instanceof ApiError ? e.message : "Association impossible.");
+              }
+            }}
+          />
         </div>
       )}
 

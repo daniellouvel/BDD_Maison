@@ -260,14 +260,33 @@ export default function ArticleNew() {
         <>
           <label>
             Catégorie
-            <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-              <option value="">—</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {categoryLabel(categories, c.id)}
-                </option>
-              ))}
-            </select>
+            <div className="row">
+              <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+                <option value="">—</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {categoryLabel(categories, c.id)}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="secondary"
+                onClick={async () => {
+                  const label = window.prompt("Nom de la nouvelle catégorie (ex. Résistance, Visserie)");
+                  if (!label?.trim()) return;
+                  try {
+                    const created = await api.post<Category>("/categories", { name: label.trim(), parent_id: null });
+                    setCategories(await api.get<Category[]>("/categories"));
+                    setCategoryId(created.id);
+                  } catch (e) {
+                    setError(e instanceof ApiError ? e.message : "Création de la catégorie impossible.");
+                  }
+                }}
+              >
+                + catégorie
+              </button>
+            </div>
           </label>
 
           {fields.map((f) => (

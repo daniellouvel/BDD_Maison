@@ -3,7 +3,17 @@ import { NavLink, Route, Routes } from "react-router-dom";
 import { api, ApiError } from "./api";
 import { AuthContext, type AuthState } from "./auth";
 import Home from "./screens/Home";
+import LabelDetail from "./screens/LabelDetail";
 import Login from "./screens/Login";
+import QrManager from "./screens/QrManager";
+import Scan from "./screens/Scan";
+import { Navigate, useParams } from "react-router-dom";
+
+/** Ancienne adresse /nodes/:id : on ouvre l'accueil avec l'élément sélectionné. */
+function NodeRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/?n=${encodeURIComponent(id ?? "")}`} replace />;
+}
 import type { User } from "./types";
 
 type ServerStatus = "online" | "server-down" | "offline";
@@ -84,6 +94,13 @@ export default function App() {
       <main className="content">
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/scan" element={<Scan />} />
+          <Route path="/qr" element={<QrManager />} />
+          <Route path="/qr/labels/:code" element={<LabelDetail />} />
+          {/* Cible des QR encodant une URL : ouvre directement l'élément étiqueté */}
+          <Route path="/l/:code" element={<LabelDetail redirectAssigned />} />
+          {/* Anciennes adresses d'éléments : on ouvre l'accueil, sur l'élément */}
+          <Route path="/nodes/:id" element={<NodeRedirect />} />
           <Route path="*" element={<Home />} />
         </Routes>
       </main>
@@ -91,6 +108,8 @@ export default function App() {
         <NavLink to="/" end>
           Accueil
         </NavLink>
+        <NavLink to="/scan">Scanner</NavLink>
+        <NavLink to="/qr">Étiquettes QR</NavLink>
       </nav>
     </AuthContext.Provider>
   );

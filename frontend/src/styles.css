@@ -208,4 +208,5 @@ label.checkbox input { width: auto; }
 .plan .plan-cell text { fill: currentColor; font-family: inherit; pointer-events: none; }
 .plan-editing { cursor: crosshair; }
 .plan-editing .plan-cell { pointer-events: none; }
+.plan .plan-cell.plan-hit rect { fill: rgba(249, 115, 22, 0.45); stroke: #f97316; stroke-width: 2; }
 .plan .plan-draft { fill: rgba(59, 130, 246, 0.25); stroke: #3b82f6; stroke-width: 1; stroke-dasharray: 4 3; }

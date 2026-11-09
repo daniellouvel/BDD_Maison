@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { api, ApiError } from "../api";
 import { extractCode, fetchLabel } from "../qr";
-import type { Node, NodeDetail } from "../types";
+import type { BoxLayout, Node, NodeDetail } from "../types";
+import PlanView, { loadPlanNames } from "./PlanView";
 import Scanner from "./Scanner";
 
 type Mode = "scan" | "code" | "browse";
@@ -124,6 +125,21 @@ function Browse({ onPick, onCancel }: { onPick: (node: NodeDetail) => void; onCa
   const [error, setError] = useState<string | null>(null);
 
   const currentId = stack.length ? stack[stack.length - 1].id : null;
+  const [plan, setPlan] = useState<{ layout: BoxLayout; names: Record<string, string> } | null>(null);
+
+  // Si le niveau ouvert est une boîte avec un plan, on propose de cliquer une case.
+  useEffect(() => {
+    setPlan(null);
+    if (!currentId) return;
+    api
+      .get<NodeDetail>(`/nodes/${currentId}`)
+      .then(async (d) => {
+        if (d.layout && d.layout.levels?.length) {
+          setPlan({ layout: d.layout, names: await loadPlanNames(currentId, d.layout) });
+        }
+      })
+      .catch(() => setPlan(null));
+  }, [currentId]);
 
   useEffect(() => {
     setError(null);
@@ -162,6 +178,12 @@ function Browse({ onPick, onCancel }: { onPick: (node: NodeDetail) => void; onCa
           Annuler
         </button>
       </div>
+      {plan && (
+        <>
+          <p className="muted small">Touchez une case du plan pour la choisir.</p>
+          <PlanView layout={plan.layout} names={plan.names} onCellClick={choose} />
+        </>
+      )}
       <ul className="list">
         {children.map((c) => (
           <li key={c.id} className="row">

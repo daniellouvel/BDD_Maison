@@ -259,6 +259,63 @@ function LocateItem({ node, onDone }: { node: NodeDetail; onDone: () => void }) 
   );
 }
 
+/** Après la création d'une boîte : étiquette, étages et compartiments, emplacement, sans quitter la page. */
+function BoxSetup({ boxId, onDone, onChanged }: { boxId: string; onDone: () => void; onChanged: () => void }) {
+  const [node, setNode] = useState<NodeDetail | null>(null);
+  const [contents, setContents] = useState<Node[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const [detail, kids] = await Promise.all([
+        api.get<NodeDetail>(`/nodes/${boxId}`),
+        api.get<Node[]>(`/nodes?parent_id=${boxId}`),
+      ]);
+      setNode(detail);
+      setContents(kids);
+      onChanged();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Chargement impossible.");
+    }
+  }, [boxId, onChanged]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  if (error) return <p className="error">{error}</p>;
+  if (!node) return <p className="muted">Chargement…</p>;
+
+  return (
+    <section className="card">
+      <h2>Boîte « {node.name} » créée</h2>
+
+      <h3>1. Étiquette</h3>
+      {node.qr_code ? (
+        <p>
+          Étiquette : <strong>{node.qr_code}</strong>
+        </p>
+      ) : (
+        <AttachLabel nodeId={node.id} onDone={load} />
+      )}
+
+      <h3>2. Étages et compartiments</h3>
+      <BoxPlan node={node} contents={contents} canWrite onChanged={load} />
+
+      <h3>3. Emplacement</h3>
+      {node.parent_id === null ? (
+        <LocateItem node={node} onDone={load} />
+      ) : (
+        <p className="muted">Rangée dans : {node.breadcrumb.slice(0, -1).map((b) => b.name).join(" › ")}</p>
+      )}
+
+      <button type="button" className="secondary" onClick={onDone}>
+        Terminer
+      </button>
+    </section>
+  );
+}
+
 function NewChild({
   parentId,
   types,
@@ -277,6 +334,8 @@ function NewChild({
   const [width, setWidth] = useState("");
   const [height, setHeight] = useState("");
   const [target, setTarget] = useState<NodeDetail | null>(null);
+  // Boîte créée : on enchaîne étiquette, plan et emplacement sur la même page.
+  const [createdBox, setCreatedBox] = useState<string | null>(null);
 
   // Le genre est choisi d'abord ; la liste des types ne montre que ceux de ce genre (ou « tous »).
   const genre = kind === "location" ? "emplacement" : kind === "box" ? "boite" : "contenant";
@@ -327,6 +386,7 @@ function NewChild({
       setWidth("");
       setHeight("");
       setTarget(null);
+      if (isBox) setCreatedBox(created.id);
       if (labelCode) {
         try {
           await api.post(`/qr/labels/${labelCode}/assign`, { node_id: created.id });
@@ -344,6 +404,7 @@ function NewChild({
   }
 
   return (
+    <>
     <form className="form" onSubmit={submit}>
       <h2>Créer ici</h2>
       <div className="row">
@@ -401,5 +462,7 @@ function NewChild({
       {error && <p className="error">{error}</p>}
       <button type="submit">Créer</button>
     </form>
+    {createdBox && <BoxSetup key={createdBox} boxId={createdBox} onDone={() => setCreatedBox(null)} onChanged={onCreated} />}
+    </>
   );
 }

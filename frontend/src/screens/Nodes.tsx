@@ -144,7 +144,7 @@ export default function Nodes() {
               )}
             </div>
           )}
-          {canWrite && node.kind === "item" && node.parent_id === null && (
+          {canWrite && node.kind !== "location" && node.parent_id === null && (
             <LocateItem node={node} onDone={load} />
           )}
           {attaching && (
@@ -246,7 +246,8 @@ function LocateItem({ node, onDone }: { node: NodeDetail; onDone: () => void }) 
 
   return (
     <div className="card">
-      <h2>Localiser cet objet</h2>
+      <h2>Placer dans un emplacement</h2>
+      <p className="muted small">Facultatif : vous pouvez aussi le laisser à la racine et le placer plus tard.</p>
       <LocationPicker value={chosen} onChange={setChosen} />
       {chosen && (
         <button type="button" onClick={save} disabled={busy}>

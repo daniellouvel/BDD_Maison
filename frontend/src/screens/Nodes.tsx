@@ -103,7 +103,6 @@ export default function Nodes() {
                 )}
               </p>
               {canWrite && <MovementForm nodeId={node.id} onDone={load} />}
-              <ItemLocation node={node} />
               {node.article_id && <ArticleDetailScreen articleId={node.article_id} />}
             </>
           )}
@@ -149,6 +148,7 @@ export default function Nodes() {
         </section>
       )}
 
+      {node && <ItemLocation node={node} />}
       {node?.kind === "container" && <BoxPlan node={node} contents={children} canWrite={canWrite} onChanged={load} />}
       {node?.kind !== "item" && (
         <>

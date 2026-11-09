@@ -172,3 +172,10 @@ def test_a_location_such_as_a_cabinet_can_have_a_plan(admin_client: TestClient) 
     r = _put_layout(admin_client, armoire["id"], body)
     assert r.status_code == 200, r.text
     assert r.json()["layout"]["width_mm"] == 800
+
+
+def test_search_ignores_case_and_accents(admin_client: TestClient) -> None:
+    admin_client.post(f"{API}/articles", json={"name": "Résistance 10 kΩ"}, headers=CSRF)
+    for q in ("resistance", "RÉSISTANCE", "résistance", "10 k"):
+        r = admin_client.get(f"{API}/articles?q={q}")
+        assert r.status_code == 200 and len(r.json()) == 1, q

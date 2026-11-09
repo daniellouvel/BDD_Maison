@@ -1,3 +1,4 @@
+import unicodedata
 import uuid
 from typing import Any
 
@@ -145,18 +146,36 @@ def create_node_type(db: Session, data: NodeTypeIn, actor: User) -> NodeType:
 # --- Articles -----------------------------------------------------------------------------------
 
 
+_ACCENTED = "àâäçéèêëîïôöùûüÿœæ"
+_PLAIN = "aaaceeeeiioouuuyoae"
+
+
+def fold(text: str) -> str:
+    """Minuscules sans accents : « Résistance » → « resistance »."""
+    decomposed = unicodedata.normalize("NFKD", text.lower())
+    return "".join(c for c in decomposed if not unicodedata.combining(c)).replace("œ", "oe").replace("æ", "ae")
+
+
+def _folded_column(column: Any) -> Any:
+    """Même normalisation côté base : minuscules et lettres accentuées ramenées à leur forme simple."""
+    return func.translate(func.lower(column), _ACCENTED, _PLAIN)
+
+
 def article_text_clause(q: str) -> list[Any]:
-    """Chaque mot de la requête doit apparaître dans au moins un champ texte de l'article."""
+    """Chaque mot de la requête doit apparaître dans au moins un champ texte de l'article.
+
+    La comparaison ignore la casse et les accents (« resistance » trouve « Résistance »).
+    """
     clauses = []
     for term in q.split():
-        pattern = f"%{like_escape(term)}%"
+        pattern = f"%{like_escape(fold(term))}%"
         clauses.append(
             or_(
-                Article.name.ilike(pattern, escape="\\"),
-                Article.brand.ilike(pattern, escape="\\"),
-                Article.mpn.ilike(pattern, escape="\\"),
-                Article.keywords.ilike(pattern, escape="\\"),
-                Article.description.ilike(pattern, escape="\\"),
+                _folded_column(Article.name).like(pattern, escape="\\"),
+                _folded_column(Article.brand).like(pattern, escape="\\"),
+                _folded_column(Article.mpn).like(pattern, escape="\\"),
+                _folded_column(Article.keywords).like(pattern, escape="\\"),
+                _folded_column(Article.description).like(pattern, escape="\\"),
             )
         )
     return clauses

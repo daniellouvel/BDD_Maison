@@ -172,3 +172,21 @@ def test_move_by_scanning_keeps_contents_attached(admin_client: TestClient) -> N
     )
     assert moved.status_code == 200
     assert [b["name"] for b in moved.json()["breadcrumb"]] == ["Garage", "Tiroir 1"]
+
+
+def test_deleting_an_element_frees_its_label(admin_client: TestClient) -> None:
+    _sheet(admin_client, count=3)
+    tiroir = _node(admin_client, kind="container", name="Tiroir à supprimer")
+    admin_client.post(f"{API}/qr/labels/QR-000001/assign", json={"node_id": tiroir["id"]}, headers=CSRF)
+
+    r = admin_client.post(f"{API}/nodes/{tiroir['id']}/archive-tree", headers=CSRF)
+    assert r.status_code == 200
+
+    label = admin_client.get(f"{API}/qr/labels/QR-000001").json()
+    assert label["status"] == "available" and label["node"] is None
+    assert [e["event"] for e in label["events"]][-1] == "released"
+
+    # L'étiquette peut être réaffectée à un autre élément.
+    autre = _node(admin_client, kind="container", name="Autre tiroir")
+    again = admin_client.post(f"{API}/qr/labels/QR-000001/assign", json={"node_id": autre["id"]}, headers=CSRF)
+    assert again.status_code == 200 and again.json()["status"] == "assigned"

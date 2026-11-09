@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError, conflict_version
-from app.models import Article, Movement, Node, NodeType, QrLabel, User, utcnow
+from app.models import Article, Movement, Node, NodeType, QrEvent, QrLabel, User, utcnow
 from app.schemas import BreadcrumbItem, LayoutIn, NodeDetail, NodeIn, NodePatch
 from app.services.common import audit, get_active, snapshot
 
@@ -288,6 +288,26 @@ def set_layout(db: Session, node: Node, data: LayoutIn, actor: User) -> Node:
     return node
 
 
+def _release_label(db: Session, node: Node, actor: User) -> None:
+    """L'élément est supprimé : son étiquette redevient disponible (l'historique est conservé)."""
+    label = db.scalar(select(QrLabel).where(QrLabel.assigned_node_id == node.id))
+    if label is None:
+        return
+    label.status = "available"
+    label.assigned_node_id = None
+    label.updated_at = utcnow()
+    db.add(
+        QrEvent(
+            code=label.code,
+            event="released",
+            node_id=node.id,
+            detail="Élément supprimé",
+            actor_id=actor.id,
+            at=utcnow(),
+        )
+    )
+
+
 def archive(db: Session, node: Node, actor: User) -> None:
     if node.archived_at is not None:
         raise ApiError(404, "not_found", "Élément introuvable")
@@ -300,6 +320,7 @@ def archive(db: Session, node: Node, actor: User) -> None:
     before = snapshot(node)
     node.archived_at = utcnow()
     node.version += 1
+    _release_label(db, node, actor)
     audit(db, "node", node, actor, "archive", before=before)
     db.commit()
 
@@ -337,6 +358,7 @@ def archive_tree(db: Session, node: Node, actor: User) -> int:
         before = snapshot(current)
         current.archived_at = now
         current.version += 1
+        _release_label(db, current, actor)
         audit(db, "node", current, actor, "archive", before=before)
     db.commit()
     return len(tree)

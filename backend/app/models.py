@@ -229,6 +229,7 @@ LABEL_EVENTS = (
     "disabled",
     "replaced",
     "reactivated",
+    "released",
 )
 
 

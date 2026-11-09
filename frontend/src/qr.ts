@@ -20,6 +20,7 @@ export const STATUS_LABEL: Record<LabelStatus, string> = {
 
 export const EVENT_LABEL: Record<string, string> = {
   created: "Créée",
+  released: "Libérée (élément supprimé)",
   printed: "Imprimée",
   reprinted: "Réimprimée",
   assigned: "Affectée",

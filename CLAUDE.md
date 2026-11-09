@@ -62,8 +62,9 @@ Frontend (`frontend/`) : `npm run dev` (Vite :5173, proxy `/api` → :8000), `np
 - **Étiquettes QR** (`services/qr.py`, `services/printing.py`) : une seule série `QR-000001…`. Une
   étiquette n'existe en base qu'à partir de sa première impression ; « Nouvelle planche » prend
   toujours `max(seq)+1` sous verrou consultatif PostgreSQL. Réimprimer un code existant exige
-  `confirm_reprint`. Une étiquette affectée ou désactivée ne redevient jamais disponible sans
-  l'action admin « réactiver ». Une étiquette par nœud au plus (`assigned_node_id` unique) ;
+  `confirm_reprint`. Une étiquette désactivée ne redevient disponible que par l'action admin
+  « réactiver » ; une étiquette affectée est libérée (événement `released`) quand son élément est
+  supprimé (`services/nodes.archive` et `archive_tree`). Une étiquette par nœud au plus (`assigned_node_id` unique) ;
   `qr_events` garde tout l'historique. `parse_code` accepte `qr-1`, `QR1`, `QR-000001`. Le PDF est
   regénéré à la demande depuis `print_items` + le gabarit figé dans `print_sheets.layout`.
 - Les tests QR décodent réellement la planche PDF (pymupdf + zxing-cpp) : si le rendu change,

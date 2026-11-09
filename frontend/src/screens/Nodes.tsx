@@ -461,7 +461,7 @@ function NewChild({
             onChange={setTarget}
             emptyLabel={parentId ? "dans l'emplacement affiché" : "à la racine"}
           />
-          <p className="muted small">Les étages et les cases se tracent ensuite sur la fiche de la boîte.</p>
+          <p className="muted small">Après « Créer », vous ajoutez l'étiquette, les étages et l'emplacement juste en dessous.</p>
         </>
       )}
       <LabelPicker value={labelCode} onChange={setLabelCode} />

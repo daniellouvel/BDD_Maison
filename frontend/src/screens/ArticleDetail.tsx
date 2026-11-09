@@ -122,6 +122,45 @@ export default function ArticleDetailScreen() {
       </section>
 
       <section className="card">
+        <h2>Documents</h2>
+        {docs.length === 0 && <p className="muted">Aucun document.</p>}
+        <ul className="list">
+          {docs.map((d) => {
+            const url = d.kind === "link" ? (d.url ?? "#") : fileUrl(d.id);
+            const isPdf = d.mime === "application/pdf";
+            return (
+              <li key={d.id}>
+                <a href={url} target="_blank" rel="noreferrer">
+                  {d.title ?? d.kind}
+                </a>
+                {isPdf && (
+                  <>
+                    <iframe className="pdf-viewer" src={url} title={d.title ?? "Document"} />
+                    <a className="small" href={url} target="_blank" rel="noreferrer">
+                      Ouvrir en plein écran
+                    </a>
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        {canWrite && (
+          <div className="row">
+            <label className="filebutton">
+              Ajouter une photo
+              <input type="file" accept="image/*" capture="environment" onChange={(e) => upload("photo", e.target.files?.[0])} />
+            </label>
+            <label className="filebutton">
+              Ajouter une datasheet (PDF)
+              <input type="file" accept="application/pdf" onChange={(e) => upload("datasheet", e.target.files?.[0])} />
+            </label>
+          </div>
+        )}
+        {error && <p className="error">{error}</p>}
+      </section>
+
+      <section className="card">
         <h2>Stock total : {formatQty(article.total_quantity)}</h2>
         {article.min_quantity && <p className="muted small">Alerte sous {formatQty(article.min_quantity)}</p>}
         {article.locations.length === 0 && <p className="muted">Aucun lot enregistré.</p>}
@@ -151,33 +190,6 @@ export default function ArticleDetailScreen() {
             </li>
           ))}
         </ul>
-      </section>
-
-      <section className="card">
-        <h2>Documents</h2>
-        {docs.length === 0 && <p className="muted">Aucun document.</p>}
-        <ul className="list">
-          {docs.map((d) => (
-            <li key={d.id}>
-              <a href={d.kind === "link" ? (d.url ?? "#") : fileUrl(d.id)} target="_blank" rel="noreferrer">
-                {d.title ?? d.kind}
-              </a>
-            </li>
-          ))}
-        </ul>
-        {canWrite && (
-          <div className="row">
-            <label className="filebutton">
-              Ajouter une photo
-              <input type="file" accept="image/*" capture="environment" onChange={(e) => upload("photo", e.target.files?.[0])} />
-            </label>
-            <label className="filebutton">
-              Ajouter une datasheet (PDF)
-              <input type="file" accept="application/pdf" onChange={(e) => upload("datasheet", e.target.files?.[0])} />
-            </label>
-          </div>
-        )}
-        {error && <p className="error">{error}</p>}
       </section>
 
       {similar.length > 0 && (

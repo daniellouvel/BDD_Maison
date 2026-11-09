@@ -114,6 +114,26 @@ def test_archive_tree_refuses_when_stock_remains(admin_client: TestClient) -> No
     assert admin_client.get(f"{API}/nodes/{boite['id']}").status_code == 200
 
 
+def test_nodes_get_a_readable_unique_address(admin_client: TestClient) -> None:
+    premiere = _node(admin_client, kind="container", name="Boîte n°1")
+    seconde = _node(admin_client, kind="container", name="Boîte n°1")
+    assert premiere["slug"] == "boite-n1"
+    assert seconde["slug"] == "boite-n1-2"
+    by_slug = admin_client.get(f"{API}/nodes/boite-n1-2")
+    assert by_slug.status_code == 200 and by_slug.json()["id"] == seconde["id"]
+    by_id = admin_client.get(f"{API}/nodes/{premiere['id']}")
+    assert by_id.status_code == 200 and by_id.json()["slug"] == "boite-n1"
+
+
+def test_renaming_updates_the_address(admin_client: TestClient) -> None:
+    boite = _node(admin_client, kind="container", name="Ancien nom")
+    r = admin_client.patch(
+        f"{API}/nodes/{boite['id']}", json={"version": boite["version"], "name": "Tiroir nouveau"}, headers=CSRF
+    )
+    assert r.status_code == 200 and r.json()["slug"] == "tiroir-nouveau"
+    assert admin_client.get(f"{API}/nodes/tiroir-nouveau").status_code == 200
+
+
 def test_stale_layout_version_is_refused(admin_client: TestClient) -> None:
     boite = _node(admin_client, kind="container", name="Boîte")
     body = {"version": boite["version"] + 5, "width_mm": 300, "height_mm": 200, "levels": []}

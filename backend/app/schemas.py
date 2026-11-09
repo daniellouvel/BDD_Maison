@@ -159,6 +159,7 @@ class NodeOut(_Base):
     notes: str | None
     version: int
     updated_at: dt.datetime
+    slug: str | None = None
 
 
 class BreadcrumbItem(BaseModel):

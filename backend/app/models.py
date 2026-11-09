@@ -132,6 +132,7 @@ class Node(Base):
 
     __tablename__ = "nodes"
     __table_args__ = (
+        Index("uq_nodes_slug", "slug", unique=True),
         CheckConstraint(_in("kind", NODE_KINDS), name="ck_nodes_kind"),
         CheckConstraint("kind = 'item' OR name IS NOT NULL", name="ck_nodes_name_required"),
         CheckConstraint(
@@ -160,8 +161,10 @@ class Node(Base):
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     archived_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
-    # Plan d'une boîte : photo et cases (rectangles en fractions de la photo, cases = nœuds enfants).
+    # Plan d'une boîte : étages et cases en millimètres (étages et cases = nœuds enfants).
     layout: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    # Nom lisible dans l'adresse (« boite-1 »), unique parmi tous les éléments.
+    slug: Mapped[str | None] = mapped_column(String(200))
 
 
 class Movement(Base):

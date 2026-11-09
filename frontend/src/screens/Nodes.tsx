@@ -31,9 +31,14 @@ export default function Nodes() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [detail, kids, nodeTypes] = await Promise.all([
-        id ? api.get<NodeDetail>(`/nodes/${id}`) : Promise.resolve(null),
-        api.get<Node[]>(id ? `/nodes?parent_id=${id}` : "/nodes"),
+      const detail = id ? await api.get<NodeDetail>(`/nodes/${id}`) : null;
+      // Adresse lisible : on remplace l'identifiant de l'URL par le slug (« /nodes/boite-1 »).
+      if (detail?.slug && detail.slug !== id) {
+        navigate(`/nodes/${detail.slug}`, { replace: true });
+        return;
+      }
+      const [kids, nodeTypes] = await Promise.all([
+        api.get<Node[]>(detail ? `/nodes?parent_id=${detail.id}` : "/nodes"),
         api.get<NodeType[]>("/node-types"),
       ]);
       setNode(detail);
@@ -52,7 +57,7 @@ export default function Nodes() {
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Chargement impossible.");
     }
-  }, [id]);
+  }, [id, navigate]);
 
   useEffect(() => {
     setAttaching(false);

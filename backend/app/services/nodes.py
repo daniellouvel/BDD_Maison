@@ -1,3 +1,5 @@
+import re
+import unicodedata
 import uuid
 
 from sqlalchemy import func, select
@@ -17,6 +19,31 @@ def label(db: Session, node: Node) -> str:
         if article is not None:
             return article.name
     return "Sans nom"
+
+
+def slugify(text: str) -> str:
+    """Texte → adresse lisible : « Boîte n°1 » → « boite-n-1 »."""
+    ascii_text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+    slug = re.sub(r"[^a-z0-9]+", "-", ascii_text.lower()).strip("-")
+    return slug[:180] or "element"
+
+
+def assign_slug(db: Session, node: Node) -> None:
+    """Donne à l'élément une adresse lisible et unique (« boite-1 », puis « boite-1-2 »…)."""
+    base = slugify(label(db, node))
+    candidate, n = base, 2
+    while db.scalar(select(Node.id).where(Node.slug == candidate, Node.id != node.id)) is not None:
+        candidate = f"{base}-{n}"
+        n += 1
+    node.slug = candidate
+
+
+def get_by_ref(db: Session, ref: str) -> Node | None:
+    """Trouve un élément par son identifiant (UUID) ou par son adresse lisible (slug)."""
+    try:
+        return db.get(Node, uuid.UUID(ref))
+    except ValueError:
+        return db.scalar(select(Node).where(Node.slug == ref))
 
 
 def path_of(db: Session, node: Node) -> list[Node]:
@@ -93,6 +120,7 @@ def detail(db: Session, node: Node) -> NodeDetail:
         children_count=int(count or 0),
         article_name=article_name,
         layout=node.layout,
+        slug=node.slug,
     )
 
 
@@ -130,6 +158,7 @@ def create(db: Session, data: NodeIn, actor: User) -> Node:
     )
     db.add(node)
     db.flush()
+    assign_slug(db, node)
     if node.kind == "item" and node.quantity and node.quantity > 0:
         db.add(
             Movement(
@@ -197,6 +226,8 @@ def patch(db: Session, node: Node, data: NodePatch, actor: User) -> Node:
             )
         )
 
+    if "name" in fields:
+        assign_slug(db, node)
     node.version += 1
     node.updated_at = utcnow()
     audit(db, "node", node, actor, "update", before=before)

@@ -27,9 +27,10 @@ def create_node(body: NodeIn, db: DbSession, user: Writer) -> NodeDetail:
     return node_service.detail(db, node)
 
 
-@router.get("/{node_id}", response_model=NodeDetail)
-def get_node(node_id: uuid.UUID, db: DbSession, _: CurrentUser) -> NodeDetail:
-    node = db.get(Node, node_id)
+@router.get("/{node_ref}", response_model=NodeDetail)
+def get_node(node_ref: str, db: DbSession, _: CurrentUser) -> NodeDetail:
+    """Accepte l'identifiant (UUID) ou l'adresse lisible (slug, ex. « boite-1 »)."""
+    node = node_service.get_by_ref(db, node_ref)
     if node is None or node.archived_at is not None:
         raise not_found("Élément")
     return node_service.detail(db, node)

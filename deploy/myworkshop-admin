@@ -1,0 +1,12 @@
+#!/bin/bash
+# Commandes d'administration sur le serveur, avec la bonne configuration et le bon utilisateur.
+# Installé dans /usr/local/sbin/myworkshop-admin. Exemples :
+#   myworkshop-admin create-user --username daniel --role admin
+set -euo pipefail
+cd /opt/myworkshop/app/backend
+set -a
+. /etc/myworkshop/myworkshop.env
+set +a
+exec runuser -u myworkshop -- env \
+  MW_DATABASE_URL="$MW_DATABASE_URL" MW_DATA_DIR="$MW_DATA_DIR" LANG=fr_FR.UTF-8 \
+  /opt/myworkshop/venv/bin/python -m app.cli "$@"

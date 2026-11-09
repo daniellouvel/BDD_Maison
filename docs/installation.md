@@ -1,31 +1,43 @@
 # Installation sur Proxmox (LXC Debian 13)
 
-> Procédure écrite pour Debian 13 « trixie ». Elle n'a pas encore été déroulée sur un vrai
-> conteneur : les commandes sont à valider lors de la première installation.
+> Procédure déroulée le 2026-11-09 sur Proxmox VE 9.2 (hôte 192.168.1.50), conteneur 120
+> `myworkshop`. Les pièges rencontrés sont signalés par **Attention**.
 
 ## 1. Créer le conteneur (sur l'hôte Proxmox)
 
 ```bash
 pveam update
 pveam available --section system | grep debian-13
-pveam download local debian-13-standard_13.1-2_amd64.tar.zst   # adapter au nom exact listé
-pct create 120 local:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst \
-  --hostname myworkshop --unprivileged 1 --cores 2 --memory 2048 --swap 512 \
-  --rootfs local-lvm:16 --net0 name=eth0,bridge=vmbr0,ip=dhcp --onboot 1
-pct start 120
+# Attention : stocker le modèle sur un stockage qui accepte « vztmpl » (ici « Data », pas « local »)
+pveam download Data debian-13-standard_13.6-1_amd64.tar.zst
+pct create 120 Data:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst \
+  --hostname myworkshop --unprivileged 1 --features nesting=1 --cores 2 --memory 2048 --swap 512 \
+  --rootfs local-lvm:16 --mp0 Data:50,mp=/var/lib/myworkshop \
+  --net0 name=eth0,bridge=vmbr0,ip=dhcp --onboot 1 --start 1
 pct enter 120
 ```
 
-Réserver une adresse IP fixe (bail DHCP statique ou `ip=192.168.x.y/24,gw=…`).
+**Attention, adresse IP** : la box refuse de router les adresses fixées à la main (le conteneur
+joint le réseau local mais pas Internet). Le conteneur est donc en DHCP ; **réserver son adresse
+dans la box** (bail DHCP statique pour l'adresse MAC du conteneur, `pct config 120 | grep net0`).
 
-## 2. Paquets (dans le conteneur)
+## 2. Langue et paquets (dans le conteneur)
+
+**Attention** : le modèle Debian n'a aucune langue configurée ; sans cette étape, PostgreSQL crée
+ses bases en `SQL_ASCII` et l'application ne démarre pas. À faire **avant** d'installer PostgreSQL :
 
 ```bash
 apt update && apt full-upgrade -y
-apt install -y postgresql caddy python3-venv git rsync nodejs npm
+apt install -y locales
+sed -i 's/^# *fr_FR.UTF-8 UTF-8/fr_FR.UTF-8 UTF-8/' /etc/locale.gen
+locale-gen && update-locale LANG=fr_FR.UTF-8
+export LANG=fr_FR.UTF-8 LC_ALL=fr_FR.UTF-8
+apt install -y postgresql caddy python3-venv git rsync nodejs npm curl
 ```
 
-Vérifier les versions : `apt policy postgresql` (17 attendu) et `python3 --version` (3.13 attendu).
+Vérifier : `psql -l` doit montrer l'encodage `UTF8` (si `SQL_ASCII`, base encore vide :
+`pg_dropcluster 17 main --stop && pg_createcluster 17 main --locale fr_FR.UTF-8 --start`).
+Versions obtenues : PostgreSQL 17.11, Python 3.13.5, Node 20.19, Caddy 2.6.2.
 
 ## 3. Utilisateur, base, dossiers
 
@@ -48,9 +60,12 @@ runuser -u myworkshop -- /opt/myworkshop/venv/bin/pip install /opt/myworkshop/ap
 cp /opt/myworkshop/app/deploy/myworkshop.env.example /etc/myworkshop/myworkshop.env
 chmod 640 /etc/myworkshop/myworkshop.env && chown root:myworkshop /etc/myworkshop/myworkshop.env
 
+install -m 750 /opt/myworkshop/app/deploy/myworkshop-admin /usr/local/sbin/myworkshop-admin
+
 cd /opt/myworkshop/app/backend
-runuser -u myworkshop -- env $(cat /etc/myworkshop/myworkshop.env | xargs) /opt/myworkshop/venv/bin/alembic upgrade head
-runuser -u myworkshop -- env $(cat /etc/myworkshop/myworkshop.env | xargs) /opt/myworkshop/venv/bin/python -m app.cli create-user --username daniel --role admin
+set -a; . /etc/myworkshop/myworkshop.env; set +a     # (le fichier contient des commentaires)
+runuser -u myworkshop -- env MW_DATABASE_URL="$MW_DATABASE_URL" /opt/myworkshop/venv/bin/alembic upgrade head
+/usr/local/sbin/myworkshop-admin create-user --username daniel --role admin
 
 cd /opt/myworkshop/app/frontend
 runuser -u myworkshop -- npm ci
@@ -66,7 +81,9 @@ systemctl enable --now myworkshop-api myworkshop-backup.timer
 ```
 
 Caddy est configuré à l'étape suivante, une fois le certificat obtenu (il refuse de démarrer
-sans).
+sans). **En attendant**, un Caddyfile provisoire `:80` sert l'application en HTTP sur l'adresse
+IP du conteneur, avec `MW_COOKIE_SECURE=false` dans `/etc/myworkshop/myworkshop.env`. Remettre
+`MW_COOKIE_SECURE=true` (puis `systemctl restart myworkshop-api`) dès que HTTPS fonctionne.
 
 ## 6. HTTPS : https://daniel.ldns.fr (obligatoire pour la caméra et la PWA)
 
@@ -132,7 +149,8 @@ désactiver la protection pour ce seul nom si la box le permet).
 ```bash
 cd /opt/myworkshop/app && runuser -u myworkshop -- git pull
 runuser -u myworkshop -- /opt/myworkshop/venv/bin/pip install ./backend
-cd backend && runuser -u myworkshop -- env $(cat /etc/myworkshop/myworkshop.env | xargs) /opt/myworkshop/venv/bin/alembic upgrade head
+cd backend && set -a && . /etc/myworkshop/myworkshop.env && set +a \
+  && runuser -u myworkshop -- env MW_DATABASE_URL="$MW_DATABASE_URL" /opt/myworkshop/venv/bin/alembic upgrade head
 cd ../frontend && runuser -u myworkshop -- npm ci && runuser -u myworkshop -- npm run build
 systemctl restart myworkshop-api
 ```

@@ -6,4 +6,5 @@ After=postgresql.service
 Type=oneshot
 User=myworkshop
 Group=myworkshop
-ExecStart=/opt/myworkshop/app/deploy/backup/backup.sh
+# Lancé via bash : le bit exécutable n'est pas garanti après un clone Git depuis Windows.
+ExecStart=/bin/bash /opt/myworkshop/app/deploy/backup/backup.sh

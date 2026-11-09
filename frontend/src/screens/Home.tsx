@@ -349,7 +349,20 @@ function Detail({
 
   return (
     <>
-      <p className="muted small">{path}</p>
+      <p className="muted small path-line">
+        {node.breadcrumb.map((b, i) => (
+          <span key={b.id}>
+            {i > 0 && " › "}
+            {i < node.breadcrumb.length - 1 ? (
+              <button type="button" className="linklike" onClick={() => onSelect(b.id)}>
+                {b.name}
+              </button>
+            ) : (
+              b.name
+            )}
+          </span>
+        ))}
+      </p>
       <h2>
         {ICON[node.kind]} {node.name ?? node.article_name ?? "Sans nom"}
       </h2>

@@ -128,20 +128,11 @@ export default function ArticleDetailScreen({ articleId }: { articleId?: string 
         <ul className="list">
           {docs.map((d) => {
             const url = d.kind === "link" ? (d.url ?? "#") : fileUrl(d.id);
-            const isPdf = d.mime === "application/pdf";
             return (
               <li key={d.id}>
                 <a href={url} target="_blank" rel="noreferrer">
                   {d.title ?? d.kind}
                 </a>
-                {isPdf && (
-                  <>
-                    <iframe className="pdf-viewer" src={url} title={d.title ?? "Document"} />
-                    <a className="small" href={url} target="_blank" rel="noreferrer">
-                      Ouvrir en plein écran
-                    </a>
-                  </>
-                )}
               </li>
             );
           })}

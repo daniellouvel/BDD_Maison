@@ -25,6 +25,8 @@ export interface FieldDef {
 export interface NodeType {
   id: string;
   name: string;
+  /** À quel genre le type s'applique : emplacement, contenant, boîte, ou tous. */
+  genre: "emplacement" | "contenant" | "boite" | "tous";
 }
 
 export interface Article {

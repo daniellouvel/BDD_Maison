@@ -139,3 +139,12 @@ def test_stale_layout_version_is_refused(admin_client: TestClient) -> None:
     body = {"version": boite["version"] + 5, "width_mm": 300, "height_mm": 200, "levels": []}
     r = _put_layout(admin_client, boite["id"], body)
     assert r.status_code == 409 and r.json()["code"] == "version_conflict"
+
+
+def test_node_type_has_a_genre(admin_client: TestClient) -> None:
+    r = admin_client.post(f"{API}/node-types", json={"name": "Casier", "genre": "contenant"}, headers=CSRF)
+    assert r.status_code == 201 and r.json()["genre"] == "contenant"
+    bad = admin_client.post(f"{API}/node-types", json={"name": "Autre", "genre": "n'importe"}, headers=CSRF)
+    assert bad.status_code == 422
+    listed = admin_client.get(f"{API}/node-types").json()
+    assert {t["name"]: t["genre"] for t in listed}["Casier"] == "contenant"

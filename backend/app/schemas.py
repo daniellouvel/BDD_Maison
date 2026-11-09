@@ -63,11 +63,13 @@ class FieldDefOut(_Base):
 
 class NodeTypeIn(BaseModel):
     name: str = Field(min_length=1, max_length=80)
+    genre: str = Field(default="tous", pattern="^(emplacement|contenant|boite|tous)$")
 
 
 class NodeTypeOut(_Base):
     id: uuid.UUID
     name: str
+    genre: str = "tous"
 
 
 # --- Articles -----------------------------------------------------------------------------------

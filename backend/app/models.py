@@ -26,6 +26,7 @@ from app.core.db import Base
 
 ROLES = ("admin", "membre", "lecture")
 NODE_KINDS = ("location", "container", "item")
+NODE_TYPE_GENRES = ("emplacement", "contenant", "boite", "tous")
 MOVEMENT_KINDS = ("in", "out", "consume", "adjust", "move")
 ATTACHMENT_KINDS = ("photo", "datasheet", "document", "link", "note")
 FIELD_TYPES = ("text", "number", "enum", "bool")
@@ -122,9 +123,12 @@ class NodeType(Base):
     """Type d'emplacement ou de contenant défini par l'utilisateur."""
 
     __tablename__ = "node_types"
+    __table_args__ = (CheckConstraint(_in("genre", NODE_TYPE_GENRES), name="ck_node_types_genre"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(80), unique=True)
+    # Genre auquel le type s'applique : emplacement, contenant, boîte, ou tous.
+    genre: Mapped[str] = mapped_column(String(16), default="tous")
 
 
 class Node(Base):

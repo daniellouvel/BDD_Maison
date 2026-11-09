@@ -277,11 +277,21 @@ function NewChild({
   const [height, setHeight] = useState("");
   const [target, setTarget] = useState<NodeDetail | null>(null);
 
+  // Le genre est choisi d'abord ; la liste des types ne montre que ceux de ce genre (ou « tous »).
+  const genre = kind === "location" ? "emplacement" : kind === "box" ? "boite" : "contenant";
+  const visibleTypes = types.filter((t) => t.genre === "tous" || t.genre === genre);
+
   async function addType() {
-    const typeName = window.prompt("Nom du nouveau type (ex. Tiroir, Boîte, Meuble)");
+    const typeName = window.prompt(
+      kind === "location"
+        ? "Nom du nouveau type d'emplacement (ex. Pièce, Zone, Meuble)"
+        : kind === "box"
+          ? "Nom du nouveau type de boîte (ex. Boîte à composants, Casier)"
+          : "Nom du nouveau type de contenant (ex. Tiroir, Boîte, Casier)",
+    );
     if (!typeName?.trim()) return;
     try {
-      const created = await api.post<NodeType>("/node-types", { name: typeName.trim() });
+      const created = await api.post<NodeType>("/node-types", { name: typeName.trim(), genre });
       setTypeId(created.id);
       onCreated();
     } catch (e) {
@@ -336,14 +346,20 @@ function NewChild({
     <form className="form" onSubmit={submit}>
       <h2>Créer ici</h2>
       <div className="row">
-        <select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
+        <select
+          value={kind}
+          onChange={(e) => {
+            setKind(e.target.value as typeof kind);
+            setTypeId("");
+          }}
+        >
           <option value="location">Emplacement (pièce, zone, meuble…)</option>
           <option value="container">Contenant (tiroir, boîte…)</option>
           <option value="box">Boîte (avec plan et étages)</option>
         </select>
         <select value={typeId} onChange={(e) => setTypeId(e.target.value)}>
           <option value="">Type —</option>
-          {types.map((t) => (
+          {visibleTypes.map((t) => (
             <option key={t.id} value={t.id}>
               {t.name}
             </option>

@@ -123,7 +123,7 @@ def validate_attributes(
 def create_node_type(db: Session, data: NodeTypeIn, actor: User) -> NodeType:
     if db.scalar(select(NodeType).where(NodeType.name == data.name)):
         raise ApiError(409, "exists", "Ce type existe déjà.")
-    node_type = NodeType(name=data.name)
+    node_type = NodeType(name=data.name, genre=data.genre)
     db.add(node_type)
     db.flush()
     audit(db, "node_type", node_type, actor, "create")

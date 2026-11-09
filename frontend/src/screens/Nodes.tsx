@@ -4,6 +4,7 @@ import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
 import LabelPicker from "../components/LabelPicker";
 import LocationPicker from "../components/LocationPicker";
+import ArticleDetailScreen from "./ArticleDetail";
 import MovementForm from "../components/MovementForm";
 import Scanner from "../components/Scanner";
 import type { Node, NodeDetail, NodeKind, NodeType } from "../types";
@@ -100,6 +101,7 @@ export default function Nodes() {
                 )}
               </p>
               {canWrite && <MovementForm nodeId={node.id} onDone={load} />}
+              {node.article_id && <ArticleDetailScreen articleId={node.article_id} />}
             </>
           )}
           {node.notes && <p>{node.notes}</p>}

@@ -7,8 +7,9 @@ import SimilarList from "../components/SimilarList";
 import { categoryLabel, inheritedFields } from "../fields";
 import type { ArticleDetail, Attachment, Category, FieldDef, SimilarHit } from "../types";
 
-export default function ArticleDetailScreen() {
-  const { id } = useParams();
+export default function ArticleDetailScreen({ articleId }: { articleId?: string } = {}) {
+  const params = useParams();
+  const id = articleId ?? params.id;
   const { canWrite } = useAuth();
   const [article, setArticle] = useState<ArticleDetail | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);

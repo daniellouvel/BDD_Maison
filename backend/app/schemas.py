@@ -176,19 +176,27 @@ class NodeDetail(NodeOut):
 
 
 class LayoutCellIn(BaseModel):
-    """Case d'une boîte : rectangle en fractions de la photo (0 à 1) et nœud enfant associé."""
+    """Case d'un étage : rectangle en millimètres dans le plan de la boîte, et élément enfant de l'étage."""
 
     node_id: uuid.UUID
-    x: float = Field(ge=0, le=1)
-    y: float = Field(ge=0, le=1)
-    w: float = Field(gt=0, le=1)
-    h: float = Field(gt=0, le=1)
+    x: float = Field(ge=0, le=5000)
+    y: float = Field(ge=0, le=5000)
+    w: float = Field(gt=0, le=5000)
+    h: float = Field(gt=0, le=5000)
+
+
+class LayoutLevelIn(BaseModel):
+    """Étage d'une boîte : élément enfant de la boîte, avec ses cases."""
+
+    node_id: uuid.UUID
+    cells: list[LayoutCellIn] = Field(default_factory=list, max_length=500)
 
 
 class LayoutIn(BaseModel):
     version: int
-    photo_id: uuid.UUID | None = None
-    cells: list[LayoutCellIn] = Field(default_factory=list, max_length=500)
+    width_mm: float = Field(gt=0, le=5000)
+    height_mm: float = Field(gt=0, le=5000)
+    levels: list[LayoutLevelIn] = Field(default_factory=list, max_length=20)
 
 
 # --- Stock --------------------------------------------------------------------------------------

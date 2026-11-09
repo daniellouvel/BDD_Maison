@@ -4,7 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError, conflict_version
-from app.models import Article, Attachment, Movement, Node, NodeType, QrLabel, User, utcnow
+from app.models import Article, Movement, Node, NodeType, QrLabel, User, utcnow
 from app.schemas import BreadcrumbItem, LayoutIn, NodeDetail, NodeIn, NodePatch
 from app.services.common import audit, get_active, snapshot
 
@@ -206,38 +206,49 @@ def patch(db: Session, node: Node, data: NodePatch, actor: User) -> Node:
 
 
 def set_layout(db: Session, node: Node, data: LayoutIn, actor: User) -> Node:
-    """Enregistre le plan d'un contenant : photo et cases (chacune = un enfant du contenant)."""
+    """Enregistre le plan d'une boîte : étages (enfants de la boîte) et cases (enfants des étages).
+
+    Les dimensions sont en millimètres ; toute case doit tenir dans le plan de la boîte.
+    """
     if node.archived_at is not None:
         raise ApiError(404, "not_found", "Élément introuvable")
-    if node.kind == "item":
-        raise ApiError(422, "invalid_fields", "Un objet n'a pas de plan.")
+    if node.kind != "container":
+        raise ApiError(422, "invalid_fields", "Seule une boîte (contenant) a un plan.")
     if data.version != node.version:
         raise conflict_version()
 
-    if data.photo_id is not None:
-        photo = db.get(Attachment, data.photo_id)
-        if photo is None or photo.kind != "photo" or photo.node_id != node.id:
-            raise ApiError(422, "invalid_photo", "La photo doit être ajoutée à ce contenant.")
+    levels: list[dict] = []
+    seen_levels: set[uuid.UUID] = set()
+    seen_cells: set[uuid.UUID] = set()
+    for level_in in data.levels:
+        if level_in.node_id in seen_levels:
+            raise ApiError(422, "duplicate_level", "Un étage apparaît deux fois dans le plan.")
+        seen_levels.add(level_in.node_id)
+        level = db.get(Node, level_in.node_id)
+        if level is None or level.archived_at is not None or level.parent_id != node.id:
+            raise ApiError(422, "invalid_level", "Chaque étage doit être un élément de la boîte.")
+        if level.kind != "container":
+            raise ApiError(422, "invalid_level", "Un étage doit être un contenant.")
 
-    seen: set[uuid.UUID] = set()
-    cells: list[dict] = []
-    for cell in data.cells:
-        if cell.node_id in seen:
-            raise ApiError(422, "duplicate_cell", "Une case apparaît deux fois dans le plan.")
-        seen.add(cell.node_id)
-        child = db.get(Node, cell.node_id)
-        if child is None or child.archived_at is not None or child.parent_id != node.id:
-            raise ApiError(422, "invalid_cell", "Chaque case doit être un élément du contenant.")
-        if child.kind == "item":
-            raise ApiError(422, "invalid_cell", "Une case ne peut pas être un objet.")
-        if cell.x + cell.w > 1.001 or cell.y + cell.h > 1.001:
-            raise ApiError(422, "invalid_cell", "Une case dépasse la photo.")
-        cells.append(
-            {"node_id": str(cell.node_id), "x": cell.x, "y": cell.y, "w": cell.w, "h": cell.h}
-        )
+        cells: list[dict] = []
+        for cell in level_in.cells:
+            if cell.node_id in seen_cells:
+                raise ApiError(422, "duplicate_cell", "Une case apparaît deux fois dans le plan.")
+            seen_cells.add(cell.node_id)
+            child = db.get(Node, cell.node_id)
+            if child is None or child.archived_at is not None or child.parent_id != level.id:
+                raise ApiError(422, "invalid_cell", "Chaque case doit être un élément de son étage.")
+            if child.kind != "container":
+                raise ApiError(422, "invalid_cell", "Une case doit être un contenant.")
+            if cell.x + cell.w > data.width_mm + 0.01 or cell.y + cell.h > data.height_mm + 0.01:
+                raise ApiError(422, "invalid_cell", "Une case dépasse les dimensions de la boîte.")
+            cells.append(
+                {"node_id": str(cell.node_id), "x": cell.x, "y": cell.y, "w": cell.w, "h": cell.h}
+            )
+        levels.append({"node_id": str(level_in.node_id), "cells": cells})
 
     before = snapshot(node)
-    node.layout = {"photo_id": str(data.photo_id) if data.photo_id else None, "cells": cells}
+    node.layout = {"width_mm": data.width_mm, "height_mm": data.height_mm, "levels": levels}
     node.version += 1
     node.updated_at = utcnow()
     audit(db, "node", node, actor, "update", before=before)

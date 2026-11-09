@@ -77,7 +77,7 @@ export interface NodeDetail extends Node {
   layout?: BoxLayout | null;
 }
 
-/** Case d'une boîte : rectangle en fractions de la photo (0 à 1) et élément enfant associé. */
+/** Case d'un étage : rectangle en millimètres dans le plan de la boîte, élément enfant de l'étage. */
 export interface BoxCell {
   node_id: string;
   x: number;
@@ -86,9 +86,15 @@ export interface BoxCell {
   h: number;
 }
 
-export interface BoxLayout {
-  photo_id: string | null;
+export interface BoxLevel {
+  node_id: string;
   cells: BoxCell[];
+}
+
+export interface BoxLayout {
+  width_mm: number;
+  height_mm: number;
+  levels: BoxLevel[];
 }
 
 export type LabelStatus = "available" | "assigned" | "disabled";

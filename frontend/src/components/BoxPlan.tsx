@@ -1,19 +1,17 @@
-import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
-import { Link } from "react-router-dom";
-import { api, ApiError, fileUrl } from "../api";
-import type { BoxCell, Node, NodeDetail } from "../types";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { useNavigate } from "react-router-dom";
+import { api, ApiError } from "../api";
+import type { BoxCell, BoxLayout, Node, NodeDetail } from "../types";
 
 type Rect = { x: number; y: number; w: number; h: number };
 
-const clamp = (v: number) => Math.min(1, Math.max(0, v));
-const place = (r: Rect): CSSProperties => ({
-  left: `${r.x * 100}%`,
-  top: `${r.y * 100}%`,
-  width: `${r.w * 100}%`,
-  height: `${r.h * 100}%`,
-});
+const SNAP = 5; // millimètres
+const MIN_SIZE = 10; // millimètres
+const DEFAULT: BoxLayout = { width_mm: 300, height_mm: 200, levels: [] };
+const snap = (v: number) => Math.round(v / SNAP) * SNAP;
+const clamp = (v: number, max: number) => Math.min(max, Math.max(0, v));
 
-/** Plan d'une boîte : photo, cases tracées dessus (chacune = un élément enfant du contenant). */
+/** Plan d'une boîte à l'échelle (mm), un plan par étage. Chaque case est un élément enfant de son étage. */
 export default function BoxPlan({
   node,
   contents,
@@ -25,27 +23,50 @@ export default function BoxPlan({
   canWrite: boolean;
   onChanged: () => void;
 }) {
+  const navigate = useNavigate();
+  const layout: BoxLayout = node.layout ?? DEFAULT;
+  const { width_mm: W, height_mm: H, levels } = layout;
+
+  const [active, setActive] = useState(0);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Rect | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [names, setNames] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
-  const surface = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [dims, setDims] = useState({ width: String(W), height: String(H) });
+  const surface = useRef<SVGSVGElement>(null);
   const origin = useRef<{ x: number; y: number } | null>(null);
 
-  const photoId = node.layout?.photo_id ?? null;
-  const cells = node.layout?.cells ?? [];
-  const nameOf = (id: string) => contents.find((c) => c.id === id)?.name ?? "Case";
+  const level = levels[Math.min(active, levels.length - 1)] ?? null;
+  const levelName = (id: string) => contents.find((c) => c.id === id)?.name ?? "Étage";
 
-  function point(e: PointerEvent): { x: number; y: number } {
-    const r = surface.current!.getBoundingClientRect();
-    return { x: clamp((e.clientX - r.left) / r.width), y: clamp((e.clientY - r.top) / r.height) };
-  }
+  // Noms des cases : ce sont les enfants de chaque étage.
+  const key = JSON.stringify(levels);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const found: Record<string, string> = {};
+      for (const l of levels) {
+        const kids = await api.get<Node[]>(`/nodes?parent_id=${l.node_id}`).catch(() => [] as Node[]);
+        for (const k of kids) if (k.name) found[k.id] = k.name;
+      }
+      if (!cancelled) setNames(found);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 
-  async function saveLayout(photo: string | null, next: BoxCell[]) {
+  async function save(next: BoxLayout) {
     await api.put(`/nodes/${node.id}/layout`, {
       version: node.version,
-      photo_id: photo,
-      cells: next.map((c) => ({ node_id: c.node_id, x: c.x, y: c.y, w: c.w, h: c.h })),
+      width_mm: next.width_mm,
+      height_mm: next.height_mm,
+      levels: next.levels.map((l) => ({
+        node_id: l.node_id,
+        cells: l.cells.map((c) => ({ node_id: c.node_id, x: c.x, y: c.y, w: c.w, h: c.h })),
+      })),
     });
     onChanged();
   }
@@ -62,60 +83,98 @@ export default function BoxPlan({
     }
   }
 
+  function withLevels(next: BoxLevelList): BoxLayout {
+    return { ...layout, levels: next };
+  }
+
+  async function addLevel() {
+    const name = window.prompt("Nom de l'étage (ex. Étage 1, Haut, Bas)");
+    if (!name?.trim()) return;
+    await run(async () => {
+      const child = await api.post<NodeDetail>("/nodes", { kind: "container", name: name.trim(), parent_id: node.id });
+      await save(withLevels([...levels, { node_id: child.id, cells: [] }]));
+      setActive(levels.length);
+    }, "Ajout de l'étage impossible.");
+  }
+
+  async function removeLevel() {
+    if (!level) return;
+    if (level.cells.length > 0) {
+      setError("Retirez d'abord les cases de cet étage.");
+      return;
+    }
+    if (!window.confirm(`Retirer l'étage « ${levelName(level.node_id)} » ?`)) return;
+    await run(async () => {
+      await save(withLevels(levels.filter((l) => l.node_id !== level.node_id)));
+      setActive(0);
+      await api.del(`/nodes/${level.node_id}`);
+    }, "Suppression de l'étage impossible.");
+  }
+
   async function addCell(rect: Rect) {
+    if (!level) return;
     const name = window.prompt("Nom de la case (ex. A1, Vis M3, Résistances…)");
     if (!name?.trim()) return;
     await run(async () => {
       const child = await api.post<NodeDetail>("/nodes", {
         kind: "container",
         name: name.trim(),
-        parent_id: node.id,
+        parent_id: level.node_id,
       });
-      await saveLayout(photoId, [...cells, { node_id: child.id, ...rect }]);
+      const cell: BoxCell = { node_id: child.id, ...rect };
+      await save(withLevels(levels.map((l) => (l.node_id === level.node_id ? { ...l, cells: [...l.cells, cell] } : l))));
     }, "Ajout de la case impossible.");
   }
 
   async function removeCell(cell: BoxCell) {
-    if (!window.confirm(`Retirer la case « ${nameOf(cell.node_id)} » du plan ?`)) return;
+    if (!level) return;
+    if (!window.confirm(`Retirer la case « ${names[cell.node_id] ?? "Case"} » ?`)) return;
     await run(async () => {
-      await saveLayout(photoId, cells.filter((c) => c.node_id !== cell.node_id));
+      await save(
+        withLevels(
+          levels.map((l) =>
+            l.node_id === level.node_id ? { ...l, cells: l.cells.filter((c) => c.node_id !== cell.node_id) } : l,
+          ),
+        ),
+      );
       try {
         await api.del(`/nodes/${cell.node_id}`);
       } catch (e) {
-        // La case reste dans le contenant tant qu'elle a des objets : elle n'est plus sur le plan.
-        setError(
-          e instanceof ApiError
-            ? `Case retirée du plan, mais non archivée : ${e.message}`
-            : "Case retirée du plan, mais non archivée.",
-        );
+        // Une case qui contient encore des objets reste dans l'étage, mais n'est plus sur le plan.
+        setError(e instanceof ApiError ? `Case retirée du plan, non archivée : ${e.message}` : "Case non archivée.");
       }
     }, "Suppression impossible.");
   }
 
-  async function uploadPhoto(file: File | undefined) {
-    if (!file) return;
-    await run(async () => {
-      const form = new FormData();
-      form.append("kind", "photo");
-      form.append("node_id", node.id);
-      form.append("title", file.name);
-      form.append("file", file);
-      const att = await api.post<{ id: string }>("/attachments", form);
-      await saveLayout(att.id, cells);
-    }, "Envoi de la photo impossible.");
+  async function saveDims() {
+    const width = Number(dims.width);
+    const height = Number(dims.height);
+    if (!(width > 0 && height > 0)) {
+      setError("Dimensions invalides.");
+      return;
+    }
+    await run(() => save({ ...layout, width_mm: width, height_mm: height }), "Enregistrement impossible.");
   }
 
-  function onDown(e: PointerEvent<HTMLDivElement>) {
-    if (!editing || busy) return;
-    origin.current = point(e);
+  function toMm(e: PointerEvent<SVGSVGElement>) {
+    const r = surface.current!.getBoundingClientRect();
+    return {
+      x: clamp(((e.clientX - r.left) / r.width) * W, W),
+      y: clamp(((e.clientY - r.top) / r.height) * H, H),
+    };
+  }
+
+  function onDown(e: PointerEvent<SVGSVGElement>) {
+    if (!editing || busy || !level) return;
+    origin.current = toMm(e);
     e.currentTarget.setPointerCapture(e.pointerId);
     setDraft({ x: origin.current.x, y: origin.current.y, w: 0, h: 0 });
   }
 
-  function onMove(e: PointerEvent<HTMLDivElement>) {
+  function onMove(e: PointerEvent<SVGSVGElement>) {
     const o = origin.current;
     if (!o) return;
-    const p = point(e);
+    const p = toMm(e);
     setDraft({ x: Math.min(o.x, p.x), y: Math.min(o.y, p.y), w: Math.abs(p.x - o.x), h: Math.abs(p.y - o.y) });
   }
 
@@ -123,65 +182,111 @@ export default function BoxPlan({
     const rect = draft;
     origin.current = null;
     setDraft(null);
-    if (rect && rect.w >= 0.03 && rect.h >= 0.03) void addCell(rect);
+    if (!rect) return;
+    const r: Rect = { x: snap(rect.x), y: snap(rect.y), w: snap(rect.w), h: snap(rect.h) };
+    if (r.w >= MIN_SIZE && r.h >= MIN_SIZE) void addCell(r);
   }
+
+  const fontSize = Math.max(6, Math.min(24, Math.min(W, H) / 12));
 
   return (
     <section className="card">
       <h2>Plan de la boîte</h2>
-      {!photoId ? (
-        <>
-          <p className="muted">Ajoutez une photo de l'intérieur pour y tracer les cases.</p>
-          {canWrite && (
-            <label className="filebutton">
-              Ajouter la photo de la boîte
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                disabled={busy}
-                onChange={(e) => uploadPhoto(e.target.files?.[0])}
-              />
-            </label>
-          )}
-        </>
-      ) : (
-        <>
-          <div
-            ref={surface}
-            className={`plan${editing ? " plan-editing" : ""}`}
-            onPointerDown={onDown}
-            onPointerMove={onMove}
-            onPointerUp={onUp}
-          >
-            <img src={fileUrl(photoId)} alt="Intérieur de la boîte" draggable={false} />
-            {cells.map((c) =>
-              editing ? (
-                <div key={c.node_id} className="plan-cell" style={place(c)}>
-                  <span>{nameOf(c.node_id)}</span>
-                </div>
-              ) : (
-                <Link key={c.node_id} to={`/nodes/${c.node_id}`} className="plan-cell" style={place(c)}>
-                  <span>{nameOf(c.node_id)}</span>
-                </Link>
-              ),
-            )}
-            {draft && <div className="plan-cell plan-draft" style={place(draft)} />}
-          </div>
 
-          {canWrite && (
-            <div className="row">
-              <button type="button" className="secondary" onClick={() => setEditing(!editing)}>
-                {editing ? "Terminer le tracé" : "Modifier le plan"}
+      {levels.length > 0 && (
+        <div className="tabs">
+          {levels.map((l, i) => (
+            <button
+              key={l.node_id}
+              type="button"
+              className={i === active ? "" : "secondary"}
+              onClick={() => setActive(i)}
+            >
+              {levelName(l.node_id)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {level ? (
+        <svg
+          ref={surface}
+          className={`plan${editing ? " plan-editing" : ""}`}
+          viewBox={`0 0 ${W} ${H}`}
+          onPointerDown={onDown}
+          onPointerMove={onMove}
+          onPointerUp={onUp}
+        >
+          <defs>
+            <pattern id={`grid-${node.id}`} width={SNAP * 2} height={SNAP * 2} patternUnits="userSpaceOnUse">
+              <path d={`M ${SNAP * 2} 0 L 0 0 0 ${SNAP * 2}`} fill="none" stroke="#888" strokeOpacity="0.3" strokeWidth="0.5" />
+            </pattern>
+          </defs>
+          <rect x="0" y="0" width={W} height={H} fill={editing ? `url(#grid-${node.id})` : "none"} stroke="#888" strokeWidth="1.5" />
+          {level.cells.map((c) => (
+            <g
+              key={c.node_id}
+              className="plan-cell"
+              onClick={() => !editing && navigate(`/nodes/${c.node_id}`)}
+            >
+              <rect x={c.x} y={c.y} width={c.w} height={c.h} />
+              <text x={c.x + c.w / 2} y={c.y + c.h / 2} fontSize={fontSize} textAnchor="middle" dominantBaseline="middle">
+                {names[c.node_id] ?? "Case"}
+              </text>
+            </g>
+          ))}
+          {draft && <rect className="plan-draft" x={draft.x} y={draft.y} width={draft.w} height={draft.h} />}
+        </svg>
+      ) : (
+        <p className="muted">
+          Aucun étage. {canWrite ? "Cliquez sur « Modifier le plan », puis ajoutez un étage." : ""}
+        </p>
+      )}
+
+      {level && (
+        <p className="muted small">
+          {W} × {H} mm{editing ? " · glissez sur le plan pour tracer une case (pas de 5 mm)" : " · touchez une case pour l'ouvrir"}
+        </p>
+      )}
+
+      {canWrite && (
+        <div className="row">
+          <button type="button" className="secondary" onClick={() => setEditing(!editing)}>
+            {editing ? "Terminer le tracé" : "Modifier le plan"}
+          </button>
+        </div>
+      )}
+
+      {editing && canWrite && (
+        <>
+          <div className="row">
+            <label>
+              Largeur (mm)
+              <input type="number" min="1" value={dims.width} onChange={(e) => setDims({ ...dims, width: e.target.value })} />
+            </label>
+            <label>
+              Profondeur (mm)
+              <input type="number" min="1" value={dims.height} onChange={(e) => setDims({ ...dims, height: e.target.value })} />
+            </label>
+            <button type="button" className="secondary" disabled={busy} onClick={saveDims}>
+              Enregistrer les dimensions
+            </button>
+          </div>
+          <div className="row">
+            <button type="button" className="secondary" disabled={busy} onClick={addLevel}>
+              + Ajouter un étage
+            </button>
+            {level && (
+              <button type="button" className="secondary danger" disabled={busy} onClick={removeLevel}>
+                Retirer l'étage affiché
               </button>
-            </div>
-          )}
-          {editing && <p className="muted small">Glissez sur la photo pour tracer une case, puis donnez-lui un nom.</p>}
-          {editing && cells.length > 0 && (
+            )}
+          </div>
+          {level && level.cells.length > 0 && (
             <ul className="list">
-              {cells.map((c) => (
+              {level.cells.map((c) => (
                 <li key={c.node_id}>
-                  {nameOf(c.node_id)}{" "}
+                  {names[c.node_id] ?? "Case"} · {c.w} × {c.h} mm{" "}
                   <button type="button" className="linklike danger" disabled={busy} onClick={() => removeCell(c)}>
                     Retirer
                   </button>
@@ -191,7 +296,10 @@ export default function BoxPlan({
           )}
         </>
       )}
+
       {error && <p className="error">{error}</p>}
     </section>
   );
 }
+
+type BoxLevelList = BoxLayout["levels"];

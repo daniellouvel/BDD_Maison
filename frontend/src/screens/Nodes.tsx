@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
 import LabelPicker from "../components/LabelPicker";
+import LocationPicker from "../components/LocationPicker";
 import MovementForm from "../components/MovementForm";
 import Scanner from "../components/Scanner";
 import type { Node, NodeDetail, NodeKind, NodeType } from "../types";
@@ -123,6 +124,9 @@ export default function Nodes() {
               )}
             </div>
           )}
+          {canWrite && node.kind === "item" && node.parent_id === null && (
+            <LocateItem node={node} onDone={load} />
+          )}
           {attaching && (
             <AttachLabel
               nodeId={node.id}
@@ -190,6 +194,40 @@ function AttachLabel({ nodeId, onDone }: { nodeId: string; onDone: () => void })
       <Scanner onCode={onCode} hint="Scannez une étiquette vierge à coller sur cet élément" />
       {error && <p className="error">{error}</p>}
     </>
+  );
+}
+
+/** Objet sans emplacement : choisir où le ranger (scan, code ou parcours), puis l'enregistrer. */
+function LocateItem({ node, onDone }: { node: NodeDetail; onDone: () => void }) {
+  const [chosen, setChosen] = useState<NodeDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    if (!chosen) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.patch(`/nodes/${node.id}`, { version: node.version, parent_id: chosen.id });
+      onDone();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Enregistrement impossible.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card">
+      <h2>Localiser cet objet</h2>
+      <LocationPicker value={chosen} onChange={setChosen} />
+      {chosen && (
+        <button type="button" onClick={save} disabled={busy}>
+          Enregistrer l'emplacement
+        </button>
+      )}
+      {error && <p className="error">{error}</p>}
+    </div>
   );
 }
 

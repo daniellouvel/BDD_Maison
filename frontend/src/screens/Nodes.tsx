@@ -267,11 +267,15 @@ function NewChild({
   types: NodeType[];
   onCreated: () => void;
 }) {
-  const [kind, setKind] = useState<"location" | "container">(parentId ? "container" : "location");
+  const [kind, setKind] = useState<"location" | "container" | "box">(parentId ? "container" : "location");
   const [name, setName] = useState("");
   const [typeId, setTypeId] = useState("");
   const [labelCode, setLabelCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Boîte : dimensions et emplacement facultatifs.
+  const [width, setWidth] = useState("");
+  const [height, setHeight] = useState("");
+  const [target, setTarget] = useState<NodeDetail | null>(null);
 
   async function addType() {
     const typeName = window.prompt("Nom du nouveau type (ex. Tiroir, Boîte, Meuble)");
@@ -288,14 +292,30 @@ function NewChild({
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    const isBox = kind === "box";
+    if (isBox && Boolean(width) !== Boolean(height)) {
+      setError("Donnez les deux dimensions de la boîte, ou aucune.");
+      return;
+    }
     try {
-      const created = await api.post<{ id: string }>("/nodes", {
-        kind,
+      const created = await api.post<NodeDetail>("/nodes", {
+        kind: isBox ? "container" : kind,
         name: name.trim(),
-        parent_id: parentId,
+        parent_id: target ? target.id : parentId,
         node_type_id: typeId || null,
       });
+      if (isBox && width && height) {
+        await api.put(`/nodes/${created.id}/layout`, {
+          version: created.version,
+          width_mm: Number(width),
+          height_mm: Number(height),
+          levels: [],
+        });
+      }
       setName("");
+      setWidth("");
+      setHeight("");
+      setTarget(null);
       if (labelCode) {
         try {
           await api.post(`/qr/labels/${labelCode}/assign`, { node_id: created.id });
@@ -319,6 +339,7 @@ function NewChild({
         <select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
           <option value="location">Emplacement (pièce, zone, meuble…)</option>
           <option value="container">Contenant (tiroir, boîte…)</option>
+          <option value="box">Boîte (avec plan et étages)</option>
         </select>
         <select value={typeId} onChange={(e) => setTypeId(e.target.value)}>
           <option value="">Type —</option>
@@ -333,6 +354,32 @@ function NewChild({
         </button>
       </div>
       <input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
+      {kind === "box" && (
+        <>
+          <div className="row">
+            <input
+              type="number"
+              min="1"
+              placeholder="Largeur (mm, facultatif)"
+              value={width}
+              onChange={(e) => setWidth(e.target.value)}
+            />
+            <input
+              type="number"
+              min="1"
+              placeholder="Profondeur (mm, facultatif)"
+              value={height}
+              onChange={(e) => setHeight(e.target.value)}
+            />
+          </div>
+          <LocationPicker
+            value={target}
+            onChange={setTarget}
+            emptyLabel={parentId ? "dans l'emplacement affiché" : "à la racine"}
+          />
+          <p className="muted small">Les étages et les cases se tracent ensuite sur la fiche de la boîte.</p>
+        </>
+      )}
       <LabelPicker value={labelCode} onChange={setLabelCode} />
       {error && <p className="error">{error}</p>}
       <button type="submit">Créer</button>

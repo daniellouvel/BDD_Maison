@@ -11,9 +11,11 @@ type Mode = "scan" | "code" | "browse";
 export default function LocationPicker({
   value,
   onChange,
+  emptyLabel = "non localisé (à ranger plus tard)",
 }: {
   value: NodeDetail | null;
   onChange: (node: NodeDetail | null) => void;
+  emptyLabel?: string;
 }) {
   const [mode, setMode] = useState<Mode | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +59,7 @@ export default function LocationPicker({
             </button>
           </>
         ) : (
-          "non localisé (à ranger plus tard)"
+          emptyLabel
         )}
       </p>
 

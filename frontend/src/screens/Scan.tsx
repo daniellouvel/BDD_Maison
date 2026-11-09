@@ -6,14 +6,15 @@ import Scanner from "../components/Scanner";
 import { fetchLabel } from "../qr";
 import type { Label, NodeDetail } from "../types";
 
-type Mode = "open" | "move";
+type Mode = "open" | "move" | "serie";
 
 const path = (n: NodeDetail) => n.breadcrumb.map((b) => b.name).join(" › ");
 
 export default function Scan() {
   const [params, setParams] = useSearchParams();
   const { canWrite } = useAuth();
-  const mode: Mode = params.get("mode") === "move" ? "move" : "open";
+  const raw = params.get("mode");
+  const mode: Mode = raw === "move" ? "move" : raw === "serie" ? "serie" : "open";
   const preselected = params.get("source");
 
   return (
@@ -23,16 +24,105 @@ export default function Scan() {
           Ouvrir
         </button>
         {canWrite && (
-          <button
-            type="button"
-            className={mode === "move" ? "" : "secondary"}
-            onClick={() => setParams({ mode: "move" })}
-          >
-            Déplacer
-          </button>
+          <>
+            <button
+              type="button"
+              className={mode === "move" ? "" : "secondary"}
+              onClick={() => setParams({ mode: "move" })}
+            >
+              Déplacer
+            </button>
+            <button
+              type="button"
+              className={mode === "serie" ? "" : "secondary"}
+              onClick={() => setParams({ mode: "serie" })}
+            >
+              Ranger en série
+            </button>
+          </>
         )}
       </div>
-      {mode === "open" ? <OpenMode /> : <MoveMode key={preselected ?? "scan"} preselected={preselected} />}
+      {mode === "open" && <OpenMode />}
+      {mode === "move" && <MoveMode key={preselected ?? "scan"} preselected={preselected} />}
+      {mode === "serie" && <SerieMode />}
+    </>
+  );
+}
+
+/** Ranger en série : on scanne une destination, puis chaque objet qui y va, un par un. */
+function SerieMode() {
+  const [dest, setDest] = useState<NodeDetail | null>(null);
+  const [log, setLog] = useState<{ name: string; ok: boolean; text: string }[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function onCode(code: string) {
+    setError(null);
+    try {
+      const label = await fetchLabel(code);
+      if (label.status !== "assigned" || !label.node) {
+        setError(`${code} n'est affectée à aucun élément.`);
+        return;
+      }
+      const node = label.node;
+      const name = node.name ?? node.article_name ?? "Objet";
+      // Un lieu ou un contenant scanné devient la destination ; un objet est rangé dedans.
+      if (node.kind !== "item") {
+        setDest(node);
+        return;
+      }
+      if (!dest) {
+        setError("Scannez d'abord la destination (un emplacement ou un contenant).");
+        return;
+      }
+      if (node.parent_id === dest.id) {
+        setLog((l) => [{ name, ok: true, text: "déjà là" }, ...l]);
+        return;
+      }
+      setBusy(true);
+      await api.patch(`/nodes/${node.id}`, { version: node.version, parent_id: dest.id });
+      setLog((l) => [{ name, ok: true, text: `rangé dans ${dest.name ?? dest.article_name}` }, ...l]);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Rangement impossible.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!dest) {
+    return (
+      <>
+        <p className="muted">Scannez d'abord la destination (boîte, tiroir, étagère…).</p>
+        <Scanner onCode={onCode} hint="Scannez la destination" />
+        {error && <p className="error">{error}</p>}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <section className="card">
+        <p className="muted small">Destination</p>
+        <h2>{dest.name ?? dest.article_name}</h2>
+        <p className="muted small">{path(dest)}</p>
+        <button type="button" className="secondary" onClick={() => setDest(null)}>
+          Changer de destination
+        </button>
+      </section>
+      <p className="muted small">
+        Scannez chaque objet à ranger ici. Scanner un autre lieu le fait devenir la destination.
+      </p>
+      <Scanner onCode={onCode} hint={busy ? "Rangement…" : "Scannez un objet"} />
+      {error && <p className="error">{error}</p>}
+      {log.length > 0 && (
+        <ul className="list">
+          {log.map((l, i) => (
+            <li key={i}>
+              {l.ok ? "✓" : "✗"} {l.name} <span className="muted small">{l.text}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   );
 }

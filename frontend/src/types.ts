@@ -66,6 +66,8 @@ export interface Node {
   notes: string | null;
   version: number;
   updated_at: string;
+  /** Adresse lisible (ex. « boite-1 »), utilisée dans l'URL. */
+  slug?: string | null;
 }
 
 export interface NodeDetail extends Node {

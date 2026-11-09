@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { api, ApiError } from "../api";
+import { api, ApiError, newId } from "../api";
 import type { Movement } from "../types";
 
 const KINDS = [
@@ -23,7 +23,7 @@ export default function MovementForm({ nodeId, onDone }: { nodeId: string; onDon
     setError(null);
     try {
       await api.post<Movement>("/stock/movements", {
-        op_id: crypto.randomUUID(),
+        op_id: newId(),
         node_id: nodeId,
         kind,
         delta,

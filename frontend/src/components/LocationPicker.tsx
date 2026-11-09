@@ -165,12 +165,15 @@ function Browse({ onPick, onCancel }: { onPick: (node: NodeDetail) => void; onCa
       <ul className="list">
         {children.map((c) => (
           <li key={c.id} className="row">
+            <button type="button" className="linklike" onClick={() => choose(c.id)}>
+              Choisir « {c.name ?? "(sans nom)"} »
+            </button>
             <button
               type="button"
-              className="linklike"
+              className="secondary"
               onClick={() => setStack([...stack, { id: c.id, name: c.name ?? "(sans nom)" }])}
             >
-              {c.name ?? "(sans nom)"} ›
+              Ouvrir ›
             </button>
           </li>
         ))}

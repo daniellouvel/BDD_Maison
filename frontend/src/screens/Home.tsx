@@ -2,7 +2,6 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
-import LocationPicker from "../components/LocationPicker";
 import type { Node, NodeDetail, NodeKind, SearchHit } from "../types";
 
 /**
@@ -21,6 +20,7 @@ export default function Home() {
   const selected = params.get("n");
   const select = useCallback((id: string) => setParams({ n: id }), [setParams]);
   const [rootAdd, setRootAdd] = useState(false);
+  const [moving, setMoving] = useState<Moving | null>(null);
 
   return (
     <div className="explorer">
@@ -30,6 +30,14 @@ export default function Home() {
           {user.username} · <button type="button" className="linklike" onClick={logout}>Se déconnecter</button>
         </span>
       </div>
+      {moving && (
+        <div className="move-banner">
+          Déplacer « {moving.name} » : cliquez la destination dans l'arbre, puis « Déplacer ici ».{" "}
+          <button type="button" className="linklike" onClick={() => setMoving(null)}>
+            Annuler
+          </button>
+        </div>
+      )}
       <div className="explorer-body">
         <aside className="explorer-tree card">
           {canWrite && (
@@ -50,7 +58,18 @@ export default function Home() {
         </aside>
         <section className="explorer-detail card">
           {selected ? (
-            <Detail id={selected} onSelect={select} canWrite={canWrite} />
+            <Detail
+              id={selected}
+              onSelect={select}
+              canWrite={canWrite}
+              moving={moving}
+              onStartMove={setMoving}
+              onCancelMove={() => setMoving(null)}
+              onMoved={(movedId) => {
+                setMoving(null);
+                select(movedId);
+              }}
+            />
           ) : (
             <p className="muted">Choisissez un élément dans l'arbre, ou cherchez-en un en haut.</p>
           )}
@@ -240,7 +259,41 @@ async function articleNames(list: Node[], known: Names): Promise<Names> {
 
 type Panel = "none" | "add" | "move";
 
-function Detail({ id, onSelect, canWrite }: { id: string; onSelect: (id: string) => void; canWrite: boolean }) {
+type Moving = { id: string; name: string; version: number };
+
+function Detail({
+  id,
+  onSelect,
+  canWrite,
+  moving,
+  onStartMove,
+  onCancelMove,
+  onMoved,
+}: {
+  id: string;
+  onSelect: (id: string) => void;
+  canWrite: boolean;
+  moving: Moving | null;
+  onStartMove: (m: Moving) => void;
+  onCancelMove: () => void;
+  onMoved: (id: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+
+  async function confirmMove(target: NodeDetail) {
+    if (!moving) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.patch(`/nodes/${moving.id}`, { version: moving.version, parent_id: target.id });
+      onMoved(moving.id);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Déplacement impossible.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const [node, setNode] = useState<NodeDetail | null>(null);
   const [kids, setKids] = useState<Node[]>([]);
   const [panel, setPanel] = useState<Panel>("none");
@@ -294,14 +347,46 @@ function Detail({ id, onSelect, canWrite }: { id: string; onSelect: (id: string)
         {node.qr_code ? ` · étiquette ${node.qr_code}` : ""}
       </p>
 
-      {canWrite && (
+      {moving && moving.id === node.id && (
+        <div className="move-target card">
+          <strong>C'est l'élément à déplacer.</strong>
+          <p className="muted small">Cliquez sur sa nouvelle destination dans l'arbre à gauche.</p>
+        </div>
+      )}
+      {moving && moving.id !== node.id && (
+        <div className="move-target card">
+          {canHaveChildren ? (
+            <>
+              <p>
+                Destination : <strong>{path || "Racine"}</strong>
+              </p>
+              <div className="row">
+                <button type="button" onClick={() => confirmMove(node)} disabled={busy}>
+                  Déplacer « {moving.name} » ici
+                </button>
+                <button type="button" className="secondary" onClick={onCancelMove}>
+                  Annuler
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="muted small">Un objet ne peut pas contenir d'autres éléments : choisissez un emplacement ou un contenant.</p>
+          )}
+        </div>
+      )}
+
+      {canWrite && !moving && (
         <div className="row">
           {canHaveChildren && (
             <button type="button" onClick={() => setPanel(panel === "add" ? "none" : "add")}>
               Ajouter ici
             </button>
           )}
-          <button type="button" className="secondary" onClick={() => setPanel(panel === "move" ? "none" : "move")}>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => onStartMove({ id: node.id, name: node.name ?? node.article_name ?? "élément", version: node.version })}
+          >
             Déplacer
           </button>
           <button type="button" className="secondary danger" onClick={remove}>
@@ -317,15 +402,6 @@ function Detail({ id, onSelect, canWrite }: { id: string; onSelect: (id: string)
             setPanel("none");
             load();
             if (created) onSelect(created);
-          }}
-        />
-      )}
-      {panel === "move" && node && (
-        <MovePanel
-          node={node}
-          onDone={() => {
-            setPanel("none");
-            load();
           }}
         />
       )}
@@ -414,36 +490,3 @@ function AddPanel({ parent, onDone }: { parent: NodeDetail | null; onDone: (crea
   );
 }
 
-/** Déplacer : on choisit la nouvelle place (scan, code ou liste), puis on enregistre. */
-function MovePanel({ node, onDone }: { node: NodeDetail; onDone: () => void }) {
-  const [target, setTarget] = useState<NodeDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function save() {
-    if (!target) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await api.patch(`/nodes/${node.id}`, { version: node.version, parent_id: target.id });
-      onDone();
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Déplacement impossible.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="form detail-card">
-      <h3>Déplacer « {node.name ?? node.article_name} »</h3>
-      <LocationPicker value={target} onChange={setTarget} emptyLabel="aucune destination choisie" />
-      {target && (
-        <button type="button" onClick={save} disabled={busy}>
-          Déplacer ici
-        </button>
-      )}
-      {error && <p className="error small">{error}</p>}
-    </div>
-  );
-}

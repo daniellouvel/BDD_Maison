@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError } from "../api";
 import LabelPicker from "../components/LabelPicker";
+import LocationPicker from "../components/LocationPicker";
 import PhotoAnalysis from "../components/PhotoAnalysis";
 import { categoryLabel, inheritedFields } from "../fields";
 import type { Analysis, Article, Category, FieldDef, Identification, NodeDetail } from "../types";
@@ -14,6 +15,8 @@ export default function ArticleNew() {
   const navigate = useNavigate();
 
   const [parent, setParent] = useState<NodeDetail | null>(null);
+  // Emplacement choisi à la main ou par scan quand l'objet n'est pas ouvert depuis un emplacement.
+  const [location, setLocation] = useState<NodeDetail | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [fields, setFields] = useState<FieldDef[]>([]);
 
@@ -126,7 +129,7 @@ export default function ArticleNew() {
       if (quantity !== "" && Number(quantity) >= 0) {
         const item = await api.post<{ id: string }>("/nodes", {
           kind: "item",
-          parent_id: parentId,
+          parent_id: parentId ?? location?.id ?? null,
           article_id: article.id,
           quantity,
           unit: unit || null,
@@ -174,7 +177,9 @@ export default function ArticleNew() {
     return (
       <section className="card">
         <h2>Enregistré : {saved.name}</h2>
-        {parent && <p className="muted">Dans {parent.breadcrumb.map((b) => b.name).join(" › ")}</p>}
+        {(parent ?? location) && (
+          <p className="muted">Dans {(parent ?? location)!.breadcrumb.map((b) => b.name).join(" › ")}</p>
+        )}
         {labelCode && !warning && <p>Étiquette {labelCode} associée.</p>}
         {warning && <p className="error">{warning}</p>}
         <div className="quick">
@@ -191,10 +196,13 @@ export default function ArticleNew() {
   return (
     <form className="card form" onSubmit={submit}>
       <h2>Ajouter un objet</h2>
-      <p className="muted">
-        Emplacement :{" "}
-        {parent ? parent.breadcrumb.map((b) => b.name).join(" › ") : "non localisé (à ranger plus tard)"}
-      </p>
+      {parentId ? (
+        <p className="muted">
+          Emplacement : {parent ? parent.breadcrumb.map((b) => b.name).join(" › ") : "…"}
+        </p>
+      ) : (
+        <LocationPicker value={location} onChange={setLocation} />
+      )}
 
       <label>
         Photo

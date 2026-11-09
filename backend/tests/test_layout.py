@@ -94,6 +94,26 @@ def test_plan_dimensions_must_be_positive(admin_client: TestClient) -> None:
     assert r.status_code == 422
 
 
+def test_archive_tree_archives_everything_inside(admin_client: TestClient) -> None:
+    boite = _node(admin_client, kind="container", name="Boîte à archiver")
+    etage = _node(admin_client, kind="container", name="Étage", parent_id=boite["id"])
+    case = _node(admin_client, kind="container", name="Case", parent_id=etage["id"])
+    r = admin_client.post(f"{API}/nodes/{boite['id']}/archive-tree", headers=CSRF)
+    assert r.status_code == 200 and r.json() == {"archived": 3}
+    for node_id in (boite["id"], etage["id"], case["id"]):
+        assert admin_client.get(f"{API}/nodes/{node_id}").status_code == 404
+
+
+def test_archive_tree_refuses_when_stock_remains(admin_client: TestClient) -> None:
+    article = admin_client.post(f"{API}/articles", json={"name": "LM317T"}, headers=CSRF).json()
+    boite = _node(admin_client, kind="container", name="Boîte")
+    _node(admin_client, kind="item", parent_id=boite["id"], article_id=article["id"], quantity="2")
+    r = admin_client.post(f"{API}/nodes/{boite['id']}/archive-tree", headers=CSRF)
+    assert r.status_code == 409 and r.json()["code"] == "stock_remaining"
+    assert "LM317T" in r.json()["message"]
+    assert admin_client.get(f"{API}/nodes/{boite['id']}").status_code == 200
+
+
 def test_stale_layout_version_is_refused(admin_client: TestClient) -> None:
     boite = _node(admin_client, kind="container", name="Boîte")
     body = {"version": boite["version"] + 5, "width_mm": 300, "height_mm": 200, "levels": []}

@@ -53,6 +53,15 @@ def set_layout(node_id: uuid.UUID, body: LayoutIn, db: DbSession, user: Writer) 
     return node_service.detail(db, node)
 
 
+@router.post("/{node_id}/archive-tree")
+def archive_node_tree(node_id: uuid.UUID, db: DbSession, user: Writer) -> dict[str, int]:
+    """Archive l'élément et tout son contenu (étages, cases, objets sans stock)."""
+    node = db.get(Node, node_id)
+    if node is None or node.archived_at is not None:
+        raise not_found("Élément")
+    return {"archived": node_service.archive_tree(db, node, user)}
+
+
 @router.delete("/{node_id}", status_code=204)
 def archive_node(node_id: uuid.UUID, db: DbSession, user: Writer) -> Response:
     node = db.get(Node, node_id)

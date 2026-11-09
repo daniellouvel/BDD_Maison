@@ -59,14 +59,25 @@ export default function Nodes() {
     load();
   }, [load]);
 
-  async function archive() {
-    if (!node || !window.confirm("Archiver cet élément ? Il n'apparaîtra plus dans l'inventaire.")) return;
+  /** Supprime (archive) un élément avec tout son contenu, après avertissement et confirmation. */
+  async function removeTree(target: Node, afterwards: () => void) {
+    const name = target.name ?? (target.article_id ? articleNames[target.article_id] : null) ?? "cet élément";
+    const warning =
+      "Tout ce qui est dedans sera supprimé : étages, cases, contenants et objets sans stock.\n\n" +
+      "Rien n'est effacé définitivement (les éléments sont archivés), mais ils ne figureront plus dans l'inventaire. " +
+      "Un objet encore en stock bloque l'opération.";
+    if (!window.confirm(`Supprimer « ${name} » ?\n\n${warning}`)) return;
     try {
-      await api.del(`/nodes/${node.id}`);
-      navigate(node.parent_id ? `/nodes/${node.parent_id}` : "/nodes");
+      await api.post(`/nodes/${target.id}/archive-tree`, {});
+      afterwards();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Archivage impossible.");
+      setError(e instanceof ApiError ? e.message : "Suppression impossible.");
     }
+  }
+
+  async function archive() {
+    if (!node) return;
+    await removeTree(node, () => navigate(node.parent_id ? `/nodes/${node.parent_id}` : "/nodes"));
   }
 
   const typeName = (tid: string | null) => types.find((t) => t.id === tid)?.name;
@@ -142,7 +153,7 @@ export default function Nodes() {
           )}
           {canWrite && (
             <button type="button" className="linklike danger" onClick={archive}>
-              Archiver
+              Supprimer (avec son contenu)
             </button>
           )}
         </section>
@@ -161,6 +172,11 @@ export default function Nodes() {
                   <span className={`kind kind-${c.kind}`}>{KIND_LABEL[c.kind]}</span>{" "}
                   <Link to={`/nodes/${c.id}`}>{c.name ?? (c.article_id ? articleNames[c.article_id] : null) ?? "Sans nom"}</Link>
                   {c.kind === "item" && <span className="muted"> × {formatQty(c.quantity, c.unit)}</span>}
+                  {canWrite && (
+                    <button type="button" className="linklike danger" onClick={() => removeTree(c, load)}>
+                      Supprimer
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

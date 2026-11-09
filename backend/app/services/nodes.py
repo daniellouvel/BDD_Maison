@@ -271,3 +271,41 @@ def archive(db: Session, node: Node, actor: User) -> None:
     node.version += 1
     audit(db, "node", node, actor, "archive", before=before)
     db.commit()
+
+
+def _subtree(db: Session, node: Node) -> list[Node]:
+    """L'élément et tous ses descendants actifs, les plus profonds en premier."""
+    result: list[Node] = []
+
+    def visit(current: Node) -> None:
+        for child in db.scalars(
+            select(Node).where(Node.parent_id == current.id, Node.archived_at.is_(None))
+        ).all():
+            visit(child)
+        result.append(current)
+
+    visit(node)
+    return result
+
+
+def archive_tree(db: Session, node: Node, actor: User) -> int:
+    """Archive un élément avec tout ce qu'il contient. Refusé si un objet a encore du stock."""
+    if node.archived_at is not None:
+        raise ApiError(404, "not_found", "Élément introuvable")
+    tree = _subtree(db, node)
+    blocked = [label(db, n) for n in tree if n.kind == "item" and n.quantity and n.quantity > 0]
+    if blocked:
+        names = ", ".join(blocked[:10]) + (" …" if len(blocked) > 10 else "")
+        raise ApiError(
+            409,
+            "stock_remaining",
+            f"Ces objets ont encore du stock, sortez-les d'abord : {names}",
+        )
+    now = utcnow()
+    for current in tree:
+        before = snapshot(current)
+        current.archived_at = now
+        current.version += 1
+        audit(db, "node", current, actor, "archive", before=before)
+    db.commit()
+    return len(tree)

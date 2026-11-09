@@ -67,15 +67,36 @@ export default function ArticleDetailScreen({ articleId }: { articleId?: string 
     <>
       <section className="card">
         <h1>{article.name}</h1>
-        <p className="muted">
-          {[
-            article.category_id && categoryLabel(categories, article.category_id),
-            article.brand,
-            article.mpn,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </p>
+        <dl className="attrs">
+          {article.category_id && (
+            <div>
+              <dt>Catégorie</dt>
+              <dd>{categoryLabel(categories, article.category_id)}</dd>
+            </div>
+          )}
+          {article.brand && (
+            <div>
+              <dt>Marque</dt>
+              <dd>{article.brand}</dd>
+            </div>
+          )}
+          {article.mpn && (
+            <div>
+              <dt>Référence fabricant</dt>
+              <dd>{article.mpn}</dd>
+            </div>
+          )}
+          <div>
+            <dt>Stock total</dt>
+            <dd>{formatQty(article.total_quantity)}</dd>
+          </div>
+          {article.min_quantity && (
+            <div>
+              <dt>Seuil d'alerte</dt>
+              <dd>{formatQty(article.min_quantity)}</dd>
+            </div>
+          )}
+        </dl>
         {photos.length > 0 && (
           <div className="gallery">
             {photos.map((p) => (
@@ -85,7 +106,12 @@ export default function ArticleDetailScreen({ articleId }: { articleId?: string 
             ))}
           </div>
         )}
-        {article.description && <p>{article.description}</p>}
+        {article.description && (
+          <p>
+            <strong>Description : </strong>
+            {article.description}
+          </p>
+        )}
         {fields.length > 0 && (
           <dl className="attrs">
             {fields

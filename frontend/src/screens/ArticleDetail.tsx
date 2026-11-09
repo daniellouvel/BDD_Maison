@@ -178,7 +178,7 @@ export default function ArticleDetailScreen({ articleId }: { articleId?: string 
             );
           })}
         </ul>
-        {canWrite && (
+        {canWrite && editing && (
           <div className="row">
             <label className="filebutton">
               Ajouter une photo
@@ -190,7 +190,7 @@ export default function ArticleDetailScreen({ articleId }: { articleId?: string 
             </label>
           </div>
         )}
-        {canWrite && <LinkForm onAdd={addLink} />}
+        {canWrite && editing && <LinkForm onAdd={addLink} />}
         {error && <p className="error">{error}</p>}
       </section>
 

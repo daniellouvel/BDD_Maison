@@ -2,7 +2,8 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
-import LabelPicker from "../components/LabelPicker";
+import LabelField from "../components/LabelField";
+import { extractCode } from "../qr";
 import type { Node, NodeDetail, NodeKind, SearchHit } from "../types";
 
 /**
@@ -264,7 +265,7 @@ async function articleNames(list: Node[], known: Names): Promise<Names> {
 
 /* ---------- Détail et actions ---------- */
 
-type Panel = "none" | "add" | "edit" | "label";
+type Panel = "none" | "add" | "edit";
 
 type Moving = { id: string; name: string; version: number };
 
@@ -403,35 +404,9 @@ function Detail({
           <button type="button" className="secondary" onClick={() => setPanel(panel === "edit" ? "none" : "edit")}>
             Modifier
           </button>
-          {!node.qr_code && (
-            <button type="button" className="secondary" onClick={() => setPanel(panel === "label" ? "none" : "label")}>
-              Associer une étiquette
-            </button>
-          )}
           <button type="button" className="secondary danger" onClick={remove}>
             Supprimer
           </button>
-        </div>
-      )}
-
-      {panel === "label" && node && (
-        <div className="form detail-card">
-          <h3>Associer une étiquette à « {node.name ?? node.article_name} »</h3>
-          <p className="muted small">Scannez une étiquette vierge, ou saisissez son code (ex. QR-000001).</p>
-          <LabelPicker
-            value={null}
-            onChange={async (code) => {
-              if (!code) return;
-              try {
-                await api.post(`/qr/labels/${code}/assign`, { node_id: node.id });
-                setPanel("none");
-                load();
-                onChanged();
-              } catch (e) {
-                setError(e instanceof ApiError ? e.message : "Association impossible.");
-              }
-            }}
-          />
         </div>
       )}
 
@@ -484,34 +459,52 @@ function AddPanel({ parent, onDone }: { parent: NodeDetail | null; onDone: (crea
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [unit, setUnit] = useState("");
+  const [labelCode, setLabelCode] = useState("");
+  const [createdId, setCreatedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return setError("Donnez un nom.");
+    if (!createdId && !name.trim()) return setError("Donnez un nom.");
     setBusy(true);
     setError(null);
+    let id = createdId;
     try {
-      if (kind === "item") {
-        const article = await api.post<{ id: string }>("/articles", { name: name.trim() });
-        const item = await api.post<{ id: string }>("/nodes", {
-          kind: "item",
-          parent_id: parent?.id ?? null,
-          article_id: article.id,
-          quantity: quantity || "1",
-          unit: unit || null,
-        });
-        onDone(item.id);
-      } else {
-        const created = await api.post<{ id: string }>("/nodes", { kind, name: name.trim(), parent_id: parent?.id ?? null });
-        onDone(created.id);
+      if (!id) {
+        if (kind === "item") {
+          const article = await api.post<{ id: string }>("/articles", { name: name.trim() });
+          const item = await api.post<{ id: string }>("/nodes", {
+            kind: "item",
+            parent_id: parent?.id ?? null,
+            article_id: article.id,
+            quantity: quantity || "1",
+            unit: unit || null,
+          });
+          id = item.id;
+        } else {
+          const created = await api.post<{ id: string }>("/nodes", { kind, name: name.trim(), parent_id: parent?.id ?? null });
+          id = created.id;
+        }
+        setCreatedId(id);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Ajout impossible.");
-    } finally {
       setBusy(false);
+      return;
     }
+    // L'élément est créé : l'étiquette est associée ensuite, et réessayable sans le recréer.
+    if (labelCode.trim()) {
+      try {
+        await api.post(`/qr/labels/${extractCode(labelCode) ?? labelCode.trim()}/assign`, { node_id: id });
+      } catch (err) {
+        setError(`Créé, mais l'étiquette n'a pas pu être associée : ${err instanceof ApiError ? err.message : "erreur"}`);
+        setBusy(false);
+        return;
+      }
+    }
+    setBusy(false);
+    onDone(id);
   }
 
   return (
@@ -529,13 +522,14 @@ function AddPanel({ parent, onDone }: { parent: NodeDetail | null; onDone: (crea
           <input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="Unité (pcs, g…)" />
         </div>
       )}
+      <LabelField value={labelCode} onChange={setLabelCode} />
       {error && <p className="error small">{error}</p>}
       <div className="row">
         <button type="submit" disabled={busy}>
-          Ajouter
+          {createdId ? "Réessayer l'étiquette" : "Ajouter"}
         </button>
-        <button type="button" className="secondary" onClick={() => onDone(null)}>
-          Annuler
+        <button type="button" className="secondary" onClick={() => onDone(createdId)}>
+          {createdId ? "Terminer" : "Annuler"}
         </button>
       </div>
     </form>
@@ -548,6 +542,7 @@ function EditPanel({ node, onDone, onCancel }: { node: NodeDetail; onDone: () =>
   const [name, setName] = useState(node.name ?? "");
   const [notes, setNotes] = useState(node.notes ?? "");
   const [unit, setUnit] = useState(node.unit ?? "");
+  const [labelCode, setLabelCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -557,6 +552,11 @@ function EditPanel({ node, onDone, onCancel }: { node: NodeDetail; onDone: () =>
     setBusy(true);
     setError(null);
     try {
+      // L'étiquette d'abord : si le code est refusé, rien d'autre n'est modifié.
+      if (labelCode.trim()) {
+        await api.post(`/qr/labels/${extractCode(labelCode) ?? labelCode.trim()}/assign`, { node_id: node.id });
+        setLabelCode("");
+      }
       const body: Record<string, unknown> = { version: node.version, notes: notes.trim() || null };
       if (node.kind !== "item") body.name = name.trim();
       else {
@@ -578,6 +578,13 @@ function EditPanel({ node, onDone, onCancel }: { node: NodeDetail; onDone: () =>
       <input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} />
       {node.kind === "item" && <input placeholder="Unité (pcs, g, m…)" value={unit} onChange={(e) => setUnit(e.target.value)} />}
       <textarea placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+      {node.qr_code ? (
+        <p className="muted small">
+          Étiquette : <strong>{node.qr_code}</strong>
+        </p>
+      ) : (
+        <LabelField value={labelCode} onChange={setLabelCode} />
+      )}
       {error && <p className="error small">{error}</p>}
       <div className="row">
         <button type="submit" disabled={busy}>

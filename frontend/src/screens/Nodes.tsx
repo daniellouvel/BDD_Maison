@@ -369,7 +369,8 @@ function NewChild({
     e.preventDefault();
     setError(null);
     const isBox = kind === "box";
-    if (isBox && Boolean(width) !== Boolean(height)) {
+    const hasPlan = kind === "box" || kind === "location";
+    if (hasPlan && Boolean(width) !== Boolean(height)) {
       setError("Donnez les deux dimensions de la boîte, ou aucune.");
       return;
     }
@@ -380,7 +381,7 @@ function NewChild({
         parent_id: target ? target.id : parentId,
         node_type_id: typeId || null,
       });
-      if (isBox && width && height) {
+      if (hasPlan && width && height) {
         await api.put(`/nodes/${created.id}/layout`, {
           version: created.version,
           width_mm: Number(width),
@@ -438,7 +439,7 @@ function NewChild({
         </button>
       </div>
       <input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
-      {kind === "box" && (
+      {(kind === "box" || kind === "location") && (
         <>
           <div className="row">
             <input

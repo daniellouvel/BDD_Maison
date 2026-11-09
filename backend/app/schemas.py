@@ -182,10 +182,10 @@ class LayoutCellIn(BaseModel):
     """Case d'un étage : rectangle en millimètres dans le plan de la boîte, et élément enfant de l'étage."""
 
     node_id: uuid.UUID
-    x: float = Field(ge=0, le=5000)
-    y: float = Field(ge=0, le=5000)
-    w: float = Field(gt=0, le=5000)
-    h: float = Field(gt=0, le=5000)
+    x: float = Field(ge=0, le=30000)
+    y: float = Field(ge=0, le=30000)
+    w: float = Field(gt=0, le=30000)
+    h: float = Field(gt=0, le=30000)
 
 
 class LayoutLevelIn(BaseModel):
@@ -197,8 +197,8 @@ class LayoutLevelIn(BaseModel):
 
 class LayoutIn(BaseModel):
     version: int
-    width_mm: float = Field(gt=0, le=5000)
-    height_mm: float = Field(gt=0, le=5000)
+    width_mm: float = Field(gt=0, le=30000)
+    height_mm: float = Field(gt=0, le=30000)
     levels: list[LayoutLevelIn] = Field(default_factory=list, max_length=20)
 
 

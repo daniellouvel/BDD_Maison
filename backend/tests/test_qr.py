@@ -190,3 +190,26 @@ def test_deleting_an_element_frees_its_label(admin_client: TestClient) -> None:
     autre = _node(admin_client, kind="container", name="Autre tiroir")
     again = admin_client.post(f"{API}/qr/labels/QR-000001/assign", json={"node_id": autre["id"]}, headers=CSRF)
     assert again.status_code == 200 and again.json()["status"] == "assigned"
+
+
+def test_label_held_by_a_deleted_element_can_be_reassigned(admin_client: TestClient) -> None:
+    """Étiquette restée sur un élément supprimé avant la libération automatique : elle est reprise."""
+    from app.core.db import get_session_factory
+    from app.models import QrLabel
+
+    _sheet(admin_client, count=2)
+    ancien = _node(admin_client, kind="container", name="Ancien tiroir")
+    admin_client.post(f"{API}/qr/labels/QR-000001/assign", json={"node_id": ancien["id"]}, headers=CSRF)
+    # Suppression « à l'ancienne » : on archive sans libérer l'étiquette.
+    with get_session_factory()() as db:
+        from sqlalchemy import update
+
+        from app.models import Node, utcnow
+
+        db.execute(update(Node).where(Node.id == ancien["id"]).values(archived_at=utcnow()))
+        db.commit()
+        assert db.get(QrLabel, "QR-000001").status == "assigned"
+
+    nouveau = _node(admin_client, kind="container", name="Nouveau tiroir")
+    r = admin_client.post(f"{API}/qr/labels/QR-000001/assign", json={"node_id": nouveau["id"]}, headers=CSRF)
+    assert r.status_code == 200 and r.json()["status"] == "assigned"

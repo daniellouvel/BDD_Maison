@@ -83,6 +83,14 @@ def _node_name(db: Session, node_id: uuid.UUID | None) -> str:
 def assign(db: Session, code: str, node_id: uuid.UUID, actor: User) -> QrLabel:
     label = get_label(db, code, lock=True)
     node = get_active(db, Node, node_id, "Élément")
+    if label.status == "assigned" and label.assigned_node_id != node.id:
+        holder = db.get(Node, label.assigned_node_id)
+        if holder is not None and holder.archived_at is not None:
+            # L'élément qui portait cette étiquette a été supprimé : elle est reprise.
+            record(db, label, "released", actor, node_id=holder.id, detail="Élément supprimé")
+            label.status = "available"
+            label.assigned_node_id = None
+            label.updated_at = utcnow()
     if label.status == "assigned":
         if label.assigned_node_id == node.id:
             return label  # déjà fait : rejouer l'opération ne change rien

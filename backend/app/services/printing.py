@@ -207,7 +207,6 @@ def render_pdf(layout: LabelLayout, labels: list[tuple[int, str, str]], title: s
     pdf = canvas.Canvas(buffer, pagesize=(layout.page_width * mm, page_h * mm))
     pdf.setTitle(title)
     pdf.setAuthor("MyWorkshop")
-    text_h = layout.font_size * PT_TO_MM
 
     for position, caption, content in labels:
         index = position - 1
@@ -220,14 +219,20 @@ def render_pdf(layout: LabelLayout, labels: list[tuple[int, str, str]], title: s
             pdf.rect(left * mm, (page_h - top - layout.label_height) * mm,
                      layout.label_width * mm, layout.label_height * mm)
 
-        gap = (layout.label_height - layout.qr_size - text_h) / 3
-        qr_left = left + (layout.label_width - layout.qr_size) / 2
-        qr_top = top + gap
+        # QR code à gauche, texte à droite, centrés verticalement (comme dans Kept).
+        pad = min(1.5, (layout.label_width - layout.qr_size) / 4)
+        qr_left = left + pad
+        qr_top = top + (layout.label_height - layout.qr_size) / 2
         _draw_qr(pdf, content, qr_left, qr_top, layout.qr_size, page_h)
 
-        pdf.setFont("Helvetica-Bold", layout.font_size)
-        baseline = qr_top + layout.qr_size + gap + text_h * 0.8
-        pdf.drawCentredString((left + layout.label_width / 2) * mm, (page_h - baseline) * mm, caption)
+        text_left = qr_left + layout.qr_size + pad
+        text_width = layout.label_width - (text_left - left) - pad
+        size = layout.font_size
+        while size > 4 and pdf.stringWidth(caption, "Helvetica-Bold", size) > text_width * mm:
+            size -= 0.5
+        pdf.setFont("Helvetica-Bold", size)
+        baseline = top + layout.label_height / 2 + (size * PT_TO_MM) * 0.35
+        pdf.drawString(text_left * mm, (page_h - baseline) * mm, caption)
 
     pdf.showPage()
     pdf.save()

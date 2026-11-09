@@ -39,6 +39,10 @@ export default function BoxPlan({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dims, setDims] = useState({ width: String(W), height: String(H) });
+  // Case tracée en attente : on choisit le contenant qui la occupe.
+  const [pending, setPending] = useState<Rect | null>(null);
+  const [choice, setChoice] = useState("new");
+  const [newName, setNewName] = useState("");
   const surface = useRef<SVGSVGElement>(null);
   const origin = useRef<{ x: number; y: number } | null>(null);
 
@@ -116,18 +120,38 @@ export default function BoxPlan({
     }, "Suppression de l'étage impossible.");
   }
 
-  async function addCell(rect: Rect) {
-    if (!level) return;
-    const name = window.prompt("Nom de la case (ex. A1, Vis M3, Résistances…)");
-    if (!name?.trim()) return;
+  // Contenants de la boîte qui ne sont ni un étage ni déjà une case : on peut les placer sur le plan.
+  const usedIds = levels.flatMap((l) => l.cells.map((c) => c.node_id));
+  const free = contents.filter(
+    (c) => c.kind === "container" && !levels.some((l) => l.node_id === c.id) && !usedIds.includes(c.id),
+  );
+
+  async function confirmCell() {
+    if (!level || !pending) return;
+    if (choice === "new" && !newName.trim()) {
+      setError("Donnez un nom au nouveau contenant.");
+      return;
+    }
+    const rect = pending;
     await run(async () => {
-      const child = await api.post<NodeDetail>("/nodes", {
-        kind: "container",
-        name: name.trim(),
-        parent_id: level.node_id,
-      });
-      const cell: BoxCell = { node_id: child.id, ...rect };
+      let nodeId: string;
+      if (choice === "new") {
+        const child = await api.post<NodeDetail>("/nodes", {
+          kind: "container",
+          name: newName.trim(),
+          parent_id: level.node_id,
+        });
+        nodeId = child.id;
+      } else {
+        // Contenant existant : on le range dans l'étage affiché (son contenu le suit).
+        const existing = contents.find((c) => c.id === choice);
+        if (!existing) throw new ApiError(404, "not_found", "Contenant introuvable.");
+        await api.patch(`/nodes/${existing.id}`, { version: existing.version, parent_id: level.node_id });
+        nodeId = existing.id;
+      }
+      const cell: BoxCell = { node_id: nodeId, ...rect };
       await save(withLevels(levels.map((l) => (l.node_id === level.node_id ? { ...l, cells: [...l.cells, cell] } : l))));
+      setPending(null);
     }, "Ajout de la case impossible.");
   }
 
@@ -189,7 +213,12 @@ export default function BoxPlan({
     setDraft(null);
     if (!rect) return;
     const r: Rect = { x: snap(rect.x), y: snap(rect.y), w: snap(rect.w), h: snap(rect.h) };
-    if (r.w >= MIN_SIZE && r.h >= MIN_SIZE) void addCell(r);
+    if (r.w >= MIN_SIZE && r.h >= MIN_SIZE) {
+      setPending(r);
+      setChoice("new");
+      setNewName("");
+      setError(null);
+    }
   }
 
   const fontSize = Math.max(6, Math.min(24, Math.min(W, H) / 12));
@@ -300,6 +329,31 @@ export default function BoxPlan({
             </ul>
           )}
         </>
+      )}
+
+      {pending && level && (
+        <div className="form">
+          <p>Quel contenant occupe cette case ({Math.round(pending.w)} × {Math.round(pending.h)} mm) ?</p>
+          <select value={choice} onChange={(e) => setChoice(e.target.value)}>
+            <option value="new">+ Nouveau contenant</option>
+            {free.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name ?? "Sans nom"}
+              </option>
+            ))}
+          </select>
+          {choice === "new" && (
+            <input placeholder="Nom (ex. A1, Vis M3…)" value={newName} onChange={(e) => setNewName(e.target.value)} autoFocus />
+          )}
+          <div className="row">
+            <button type="button" disabled={busy} onClick={confirmCell}>
+              Ajouter la case
+            </button>
+            <button type="button" className="secondary" onClick={() => setPending(null)}>
+              Annuler
+            </button>
+          </div>
+        </div>
       )}
 
       {error && <p className="error">{error}</p>}

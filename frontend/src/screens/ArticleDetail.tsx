@@ -42,6 +42,21 @@ export default function ArticleDetailScreen({ articleId }: { articleId?: string 
     load();
   }, [load]);
 
+  async function addLink(title: string, url: string) {
+    if (!article) return;
+    const form = new FormData();
+    form.append("kind", "link");
+    form.append("article_id", article.id);
+    form.append("url", url.trim());
+    if (title.trim()) form.append("title", title.trim());
+    try {
+      await api.post("/attachments", form);
+      await load();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Ajout du lien impossible.");
+    }
+  }
+
   async function upload(kind: "photo" | "datasheet", file: File | undefined) {
     if (!file || !article) return;
     const form = new FormData();
@@ -175,6 +190,7 @@ export default function ArticleDetailScreen({ articleId }: { articleId?: string 
             </label>
           </div>
         )}
+        {canWrite && <LinkForm onAdd={addLink} />}
         {error && <p className="error">{error}</p>}
       </section>
 
@@ -217,6 +233,54 @@ export default function ArticleDetailScreen({ articleId }: { articleId?: string 
         </section>
       )}
     </>
+  );
+}
+
+/** Ajout d'un lien web (dépôt, fiche fabricant, vidéo…) à la fiche, sans changer de page. */
+function LinkForm({ onAdd }: { onAdd: (title: string, url: string) => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  if (!open) {
+    return (
+      <button type="button" className="secondary" onClick={() => setOpen(true)}>
+        Ajouter un lien web
+      </button>
+    );
+  }
+
+  return (
+    <form
+      className="form"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        await onAdd(title, url);
+        setBusy(false);
+        setTitle("");
+        setUrl("");
+        setOpen(false);
+      }}
+    >
+      <input placeholder="Titre, ex. Dépôt GitHub" value={title} onChange={(e) => setTitle(e.target.value)} />
+      <input
+        type="url"
+        placeholder="https://github.com/…"
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        required
+      />
+      <div className="row">
+        <button type="submit" disabled={busy}>
+          Ajouter le lien
+        </button>
+        <button type="button" className="secondary" onClick={() => setOpen(false)}>
+          Annuler
+        </button>
+      </div>
+    </form>
   );
 }
 

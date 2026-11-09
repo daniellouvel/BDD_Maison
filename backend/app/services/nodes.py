@@ -4,7 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError, conflict_version
-from app.models import Article, Movement, Node, NodeType, User, utcnow
+from app.models import Article, Movement, Node, NodeType, QrLabel, User, utcnow
 from app.schemas import BreadcrumbItem, NodeDetail, NodeIn, NodePatch
 from app.services.common import audit, get_active, snapshot
 
@@ -74,7 +74,10 @@ def detail(db: Session, node: Node) -> NodeDetail:
     if node.article_id is not None:
         article = db.get(Article, node.article_id)
         article_name = article.name if article else None
+    qr_code = db.scalar(select(QrLabel.code).where(QrLabel.assigned_node_id == node.id))
     return NodeDetail(
+        qr_code=qr_code,
+        archived=node.archived_at is not None,
         id=node.id,
         parent_id=node.parent_id,
         kind=node.kind,

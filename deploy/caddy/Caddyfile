@@ -1,9 +1,10 @@
-# Remplacer workshop.example.fr par le nom choisi (voir docs/installation.md, section HTTPS).
-# Sans nom de domaine : décommenter « tls internal » et installer le certificat racine de Caddy
-# sur chaque appareil.
+# MyWorkshop : https://daniel.ldns.fr (adresse locale, jamais exposée sur Internet).
+# Le certificat Let's Encrypt est obtenu par certbot (challenge DNS chez OVH) puis copié dans
+# /etc/caddy/certs par deploy/certbot/deploy-hook.sh. Caddy ne demande donc aucun certificat
+# lui-même. Voir docs/installation.md, section HTTPS.
 
-workshop.example.fr {
-	# tls internal
+daniel.ldns.fr {
+	tls /etc/caddy/certs/fullchain.pem /etc/caddy/certs/privkey.pem
 
 	encode zstd gzip
 

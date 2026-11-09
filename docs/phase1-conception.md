@@ -469,7 +469,7 @@ Les maquettes graphiques détaillées (captures visuelles) seront produites en p
 
 ## 15. Points à arbitrer
 
-1. **HTTPS** : avez-vous un nom de domaine à utiliser pour le LAN (option 1 de §4.3), ou faut-il une autorité locale ?
+1. **HTTPS** : *décidé* : `daniel.ldns.fr` (domaine familial chez OVH), pointant vers l'IP locale, certificat Let's Encrypt par challenge DNS (certbot + API OVH limitée à la zone). Voir `docs/installation.md` §6.
 2. **Hébergement** : *décidé* : installation native sous Debian 13 (§4.2).
 3. **Utilisateurs** : un seul compte administrateur, ou plusieurs personnes (famille) avec des rôles ?
 4. **Planches d'étiquettes** : référence exacte de la planche achetée (dimensions de l'étiquette et marges) pour la calibration.

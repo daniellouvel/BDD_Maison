@@ -10,3 +10,4 @@ __pycache__/
 *.egg-info/
 frontend/dev-dist/
 *.tsbuildinfo
+deploy/certbot/ovh.ini

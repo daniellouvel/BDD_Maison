@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     session_ttl_days: int = 30
     max_upload_bytes: int = 15 * 1024 * 1024
     cors_origins: list[str] = []
+    # Contenu encodé dans les QR. Vide : le QR contient seulement le code (« QR-000001 »),
+    # ce qui reste valable même si l'adresse du serveur change. Sinon, URL du type
+    # https://workshop.mondomaine.fr : le QR contient https://…/l/QR-000001 et s'ouvre
+    # aussi avec l'appareil photo du téléphone. Attention : une fois imprimée, l'URL est définitive.
+    qr_public_url: str = ""
 
 
 @lru_cache

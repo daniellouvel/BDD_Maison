@@ -1,0 +1,7 @@
+# Copier vers /etc/letsencrypt/ovh.ini puis : chmod 600 /etc/letsencrypt/ovh.ini
+# Clés créées sur https://eu.api.ovh.com/createToken/ (voir docs/installation.md).
+# Ne jamais versionner le vrai fichier.
+dns_ovh_endpoint = ovh-eu
+dns_ovh_application_key = A_REMPLIR
+dns_ovh_application_secret = A_REMPLIR
+dns_ovh_consumer_key = A_REMPLIR

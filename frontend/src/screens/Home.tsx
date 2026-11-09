@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
-import { useAuth } from "../App";
+import { useAuth } from "../auth";
 import type { Dashboard } from "../types";
 
 export default function Home() {
@@ -37,9 +37,7 @@ export default function Home() {
       </form>
 
       <div className="quick">
-        <button type="button" disabled title="Disponible en phase 3 (QR codes)">
-          Scanner
-        </button>
+        <Link to="/scan">Scanner</Link>
         {canWrite && <Link to="/articles/new">Ajouter</Link>}
         <Link to="/search">Rechercher</Link>
         <Link to="/nodes">Emplacements</Link>
@@ -53,6 +51,8 @@ export default function Home() {
             <div><strong>{dash.items}</strong>objets / lots</div>
             <div><strong>{dash.containers}</strong>contenants</div>
             <div><strong>{dash.locations}</strong>emplacements</div>
+            <Link to="/qr" className="stat-link"><strong>{dash.labels_available}</strong>étiquettes QR libres</Link>
+            <Link to="/qr" className="stat-link"><strong>{dash.labels_assigned}</strong>étiquettes affectées</Link>
           </section>
 
           <section className="card">
@@ -79,7 +79,7 @@ export default function Home() {
               <ul className="list">
                 {dash.unlocated.map((n) => (
                   <li key={n.id}>
-                    <Link to={`/nodes/${n.id}`}>{n.name ?? "Objet"}</Link>
+                    <Link to={`/nodes/${n.id}`}>{n.name ?? n.article_name ?? "Objet"}</Link>
                     <span className="muted"> × {formatQty(n.quantity, n.unit)}</span>
                   </li>
                 ))}

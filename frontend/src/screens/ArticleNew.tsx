@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError } from "../api";
+import LabelPicker from "../components/LabelPicker";
 import { categoryLabel, inheritedFields } from "../fields";
 import type { Article, Category, FieldDef, NodeDetail } from "../types";
 
@@ -29,6 +30,8 @@ export default function ArticleNew() {
   const [minQuantity, setMinQuantity] = useState("");
   const [attributes, setAttributes] = useState<Record<string, AttrValue>>({});
   const [photo, setPhoto] = useState<File | null>(null);
+  const [labelCode, setLabelCode] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -66,6 +69,7 @@ export default function ArticleNew() {
     setExisting(null);
     setQuantity("1");
     setPhoto(null);
+    setLabelCode(null);
     setSaved(null);
     setError(null);
   }
@@ -88,14 +92,29 @@ export default function ArticleNew() {
           attributes,
         });
       }
+      let itemId: string | null = null;
       if (quantity !== "" && Number(quantity) >= 0) {
-        await api.post("/nodes", {
+        const item = await api.post<{ id: string }>("/nodes", {
           kind: "item",
           parent_id: parentId,
           article_id: article.id,
           quantity,
           unit: unit || null,
         });
+        itemId = item.id;
+      }
+      setWarning(null);
+      if (labelCode && itemId) {
+        // L'objet est déjà enregistré : un échec ici ne doit pas inciter à tout ressaisir.
+        try {
+          await api.post(`/qr/labels/${labelCode}/assign`, { node_id: itemId });
+        } catch (err) {
+          setWarning(
+            `Objet enregistré, mais l'étiquette ${labelCode} n'a pas été associée : ${
+              err instanceof ApiError ? err.message : "erreur"
+            }`,
+          );
+        }
       }
       if (photo) {
         const form = new FormData();
@@ -117,6 +136,8 @@ export default function ArticleNew() {
       <section className="card">
         <h2>Enregistré : {saved.name}</h2>
         {parent && <p className="muted">Dans {parent.breadcrumb.map((b) => b.name).join(" › ")}</p>}
+        {labelCode && !warning && <p>Étiquette {labelCode} associée.</p>}
+        {warning && <p className="error">{warning}</p>}
         <div className="quick">
           <button type="button" onClick={reset}>
             Ajouter un autre ici
@@ -266,6 +287,8 @@ export default function ArticleNew() {
         Photo
         <input type="file" accept="image/*" capture="environment" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
       </label>
+
+      {quantity !== "" && <LabelPicker value={labelCode} onChange={setLabelCode} />}
 
       {error && <p className="error">{error}</p>}
       <div className="row">

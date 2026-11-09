@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, ApiError, fileUrl, formatQty, thumbUrl } from "../api";
-import { useAuth } from "../App";
+import { useAuth } from "../auth";
 import MovementForm from "../components/MovementForm";
 import { categoryLabel, inheritedFields } from "../fields";
 import type { ArticleDetail, Attachment, Category, FieldDef } from "../types";

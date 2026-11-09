@@ -1,16 +1,27 @@
 # MyWorkshop
 
 Inventaire auto-hébergé pour l'atelier et la maison : articles, stocks par boîte, emplacements
-hiérarchiques, photos, recherche. Étiquettes QR, IA, projets et mode hors ligne arrivent dans les
-phases suivantes (voir [docs/phase1-conception.md](docs/phase1-conception.md)).
+hiérarchiques, photos, recherche, étiquettes QR universelles. IA, projets et mode hors ligne
+arrivent dans les phases suivantes (voir [docs/phase1-conception.md](docs/phase1-conception.md)).
+
+## Étiquettes QR
+
+- Menu **Accueil → étiquettes QR** : générer une planche A4 de 65 étiquettes (PDF), finir une
+  planche entamée (« commencer à la position »), réimprimer un code abîmé (avec confirmation).
+- Avant la première vraie impression : régler le gabarit puis imprimer la **planche d'essai**
+  (contours, aucun code consommé), à 100 % sans « ajuster à la page ».
+- Par défaut le QR contient seulement le code (`QR-000001`) et se lit avec le scanner de
+  l'application. `MW_QR_PUBLIC_URL=https://…` y met une URL ouvrable par l'appareil photo du
+  téléphone ; à décider **avant** d'imprimer, car le contenu imprimé est définitif.
+- La caméra exige HTTPS (ou `localhost`). Sans caméra, le code se saisit à la main.
 
 ## État
 
 | Phase | Contenu | État |
 |---|---|---|
 | 1 | Conception | Validée |
-| 2 | Socle : auth, catalogue, emplacements, stock, photos, recherche, déploiement | En cours |
-| 3 | QR codes | À faire |
+| 2 | Socle : auth, catalogue, emplacements, stock, photos, recherche, déploiement | Fait |
+| 3 | QR codes : planches de 65, doublons, affectation, déplacement par scan | Fait |
 | 4 | IA | À faire |
 | 5 | Projets, prêts, achats, hors ligne, accès distant | À faire |
 

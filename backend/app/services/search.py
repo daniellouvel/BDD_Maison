@@ -8,10 +8,10 @@ from app.schemas import (
     ArticleOut,
     DashboardOut,
     MovementOut,
-    NodeOut,
     SearchHit,
 )
-from app.services import catalog, stock
+from app.services import catalog, qr, stock
+from app.services import nodes as node_service
 
 
 def search_articles(db: Session, q: str, limit: int = 50) -> list[SearchHit]:
@@ -46,8 +46,11 @@ def dashboard(db: Session) -> DashboardOut:
         )
     )
     recent = list(db.scalars(select(Movement).order_by(Movement.created_at.desc()).limit(10)))
+    labels = qr.count_by_status(db)
 
     return DashboardOut(
+        labels_available=labels["available"],
+        labels_assigned=labels["assigned"],
         articles=int(
             db.scalar(select(func.count()).select_from(Article).where(Article.archived_at.is_(None))) or 0
         ),
@@ -55,6 +58,6 @@ def dashboard(db: Session) -> DashboardOut:
         locations=count(Node.kind == "location", active),
         items=count(Node.kind == "item", active),
         low_stock=low,
-        unlocated=[NodeOut.model_validate(n) for n in unlocated],
+        unlocated=[node_service.detail(db, n) for n in unlocated],
         recent_movements=[MovementOut.model_validate(m) for m in recent],
     )

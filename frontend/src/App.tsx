@@ -1,27 +1,17 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Route, Routes } from "react-router-dom";
 import { api, ApiError } from "./api";
+import { AuthContext, type AuthState } from "./auth";
 import ArticleDetailScreen from "./screens/ArticleDetail";
 import ArticleNew from "./screens/ArticleNew";
 import Home from "./screens/Home";
+import LabelDetail from "./screens/LabelDetail";
 import Login from "./screens/Login";
 import Nodes from "./screens/Nodes";
+import QrManager from "./screens/QrManager";
+import Scan from "./screens/Scan";
 import Search from "./screens/Search";
 import type { User } from "./types";
-
-interface AuthState {
-  user: User;
-  canWrite: boolean;
-  logout: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthState | null>(null);
-
-export function useAuth(): AuthState {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth hors du AuthContext");
-  return ctx;
-}
 
 type ServerStatus = "online" | "server-down" | "offline";
 
@@ -106,6 +96,11 @@ export default function App() {
           <Route path="/articles/:id" element={<ArticleDetailScreen />} />
           <Route path="/nodes" element={<Nodes />} />
           <Route path="/nodes/:id" element={<Nodes />} />
+          <Route path="/scan" element={<Scan />} />
+          <Route path="/qr" element={<QrManager />} />
+          <Route path="/qr/labels/:code" element={<LabelDetail />} />
+          {/* Cible des QR encodant une URL : ouvre directement l'élément étiqueté */}
+          <Route path="/l/:code" element={<LabelDetail redirectAssigned />} />
           <Route path="*" element={<p className="muted">Page introuvable.</p>} />
         </Routes>
       </main>
@@ -114,8 +109,11 @@ export default function App() {
           Accueil
         </NavLink>
         <NavLink to="/search">Rechercher</NavLink>
+        <NavLink to="/scan" className="scan-tab">
+          Scanner
+        </NavLink>
         {auth.canWrite && <NavLink to="/articles/new">Ajouter</NavLink>}
-        <NavLink to="/nodes">Emplacements</NavLink>
+        <NavLink to="/nodes">Lieux</NavLink>
       </nav>
     </AuthContext.Provider>
   );

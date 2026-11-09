@@ -10,6 +10,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Identity,
     Index,
     Integer,
     Numeric,
@@ -207,6 +208,95 @@ class Attachment(Base):
     size: Mapped[int | None] = mapped_column(Integer)
     sha256: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+LABEL_STATUSES = ("available", "assigned", "disabled")
+LABEL_EVENTS = (
+    "created",
+    "printed",
+    "reprinted",
+    "assigned",
+    "disabled",
+    "replaced",
+    "reactivated",
+)
+
+
+class QrLabel(Base):
+    """Étiquette QR universelle. Le code est permanent ; le type d'élément n'est connu qu'à
+    l'affectation. Une étiquette n'existe en base qu'à partir de sa première impression."""
+
+    __tablename__ = "qr_labels"
+    __table_args__ = (
+        CheckConstraint(_in("status", LABEL_STATUSES), name="ck_qr_labels_status"),
+        CheckConstraint(
+            "(status = 'assigned') = (assigned_node_id IS NOT NULL)",
+            name="ck_qr_labels_assigned_node",
+        ),
+    )
+
+    code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    seq: Mapped[int] = mapped_column(Integer, unique=True)
+    status: Mapped[str] = mapped_column(String(16), default="available")
+    assigned_node_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("nodes.id", ondelete="RESTRICT"), unique=True
+    )
+    disabled_reason: Mapped[str | None] = mapped_column(Text)
+    print_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    printed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class QrEvent(Base):
+    """Historique complet d'une étiquette (jamais modifié ni supprimé)."""
+
+    __tablename__ = "qr_events"
+    __table_args__ = (CheckConstraint(_in("event", LABEL_EVENTS), name="ck_qr_events_event"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    code: Mapped[str] = mapped_column(ForeignKey("qr_labels.code", ondelete="RESTRICT"), index=True)
+    event: Mapped[str] = mapped_column(String(16))
+    node_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("nodes.id", ondelete="SET NULL"))
+    sheet_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("print_sheets.id", ondelete="SET NULL")
+    )
+    detail: Mapped[str | None] = mapped_column(Text)
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PrintSheet(Base):
+    __tablename__ = "print_sheets"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    number: Mapped[int] = mapped_column(Integer, Identity(), unique=True)
+    is_reprint: Mapped[bool] = mapped_column(Boolean, default=False)
+    start_position: Mapped[int] = mapped_column(Integer, default=1)
+    label_count: Mapped[int] = mapped_column(Integer)
+    layout: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PrintItem(Base):
+    __tablename__ = "print_items"
+
+    sheet_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("print_sheets.id", ondelete="CASCADE"), primary_key=True
+    )
+    position: Mapped[int] = mapped_column(Integer, primary_key=True)
+    code: Mapped[str] = mapped_column(ForeignKey("qr_labels.code", ondelete="RESTRICT"), index=True)
+    is_reprint: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class AppSetting(Base):
+    """Réglages applicatifs modifiables depuis l'interface (ex. gabarit des planches)."""
+
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[dict[str, Any]] = mapped_column(JSON)
 
 
 class AuditLog(Base):

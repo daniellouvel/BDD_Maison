@@ -72,6 +72,75 @@ export interface NodeDetail extends Node {
   breadcrumb: { id: string; name: string | null }[];
   children_count: number;
   article_name: string | null;
+  qr_code: string | null;
+  archived: boolean;
+}
+
+export type LabelStatus = "available" | "assigned" | "disabled";
+
+export interface LabelEvent {
+  event: "created" | "printed" | "reprinted" | "assigned" | "disabled" | "replaced" | "reactivated";
+  node_id: string | null;
+  sheet_id: string | null;
+  detail: string | null;
+  at: string;
+}
+
+export interface Label {
+  code: string;
+  seq: number;
+  status: LabelStatus;
+  disabled_reason: string | null;
+  print_count: number;
+  printed_at: string | null;
+  payload: string;
+  node: NodeDetail | null;
+  events: LabelEvent[];
+}
+
+export interface QrStats {
+  available: number;
+  assigned: number;
+  disabled: number;
+  total: number;
+  next_code: string;
+  sheets: number;
+  public_url: string;
+}
+
+export interface LabelLayout {
+  page_width: number;
+  page_height: number;
+  columns: number;
+  rows: number;
+  margin_left: number;
+  margin_top: number;
+  label_width: number;
+  label_height: number;
+  pitch_x: number;
+  pitch_y: number;
+  qr_size: number;
+  font_size: number;
+  draw_borders: boolean;
+}
+
+export interface Sheet {
+  id: string;
+  number: number;
+  is_reprint: boolean;
+  start_position: number;
+  label_count: number;
+  created_at: string;
+  first_code: string | null;
+  last_code: string | null;
+}
+
+export interface SheetPreview {
+  codes: string[];
+  start_position: number;
+  capacity: number;
+  already_printed: { code: string; status: LabelStatus; print_count: number; printed_at: string | null }[];
+  requires_confirmation: boolean;
 }
 
 export interface Movement {
@@ -104,7 +173,9 @@ export interface Dashboard {
   containers: number;
   locations: number;
   items: number;
+  labels_available: number;
+  labels_assigned: number;
   low_stock: Article[];
-  unlocated: Node[];
+  unlocated: NodeDetail[];
   recent_movements: Movement[];
 }

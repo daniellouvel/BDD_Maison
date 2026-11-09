@@ -63,17 +63,69 @@ runuser -u myworkshop -- npm run build
 cp /opt/myworkshop/app/deploy/systemd/*.service /opt/myworkshop/app/deploy/systemd/*.timer /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now myworkshop-api myworkshop-backup.timer
-cp /opt/myworkshop/app/deploy/caddy/Caddyfile /etc/caddy/Caddyfile   # puis adapter le nom d'hôte
-systemctl reload caddy
 ```
 
-## 6. HTTPS (obligatoire pour la caméra et la PWA)
+Caddy est configuré à l'étape suivante, une fois le certificat obtenu (il refuse de démarrer
+sans).
 
-- **Avec un nom de domaine** : créer un enregistrement DNS (ex. `workshop.mondomaine.fr`) vers l'IP
-  LAN du conteneur. Pour un certificat Let's Encrypt sans ouvrir de port, il faut un Caddy avec le
-  module DNS de votre registrar (challenge DNS-01).
-- **Sans domaine** : `tls internal` dans le Caddyfile, puis installer le certificat racine
-  `/var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt` sur le PC et le smartphone.
+## 6. HTTPS : https://daniel.ldns.fr (obligatoire pour la caméra et la PWA)
+
+Le domaine familial `ldns.fr` est géré chez OVH. Le sous-domaine `daniel.ldns.fr` pointe vers
+l'adresse **locale** du conteneur : il ne répond qu'à la maison (ou via VPN), rien n'est ouvert
+sur Internet. Le certificat Let's Encrypt est obtenu par un challenge DNS : certbot crée un
+enregistrement TXT temporaire chez OVH via l'API, puis le supprime.
+
+### 6.1 Chez OVH (personne qui gère le compte, une seule fois)
+
+1. **Zone DNS** : espace client OVH → Noms de domaine → `ldns.fr` → Zone DNS → Ajouter une
+   entrée → type **A**, sous-domaine `daniel`, cible = IP locale du conteneur (ex.
+   `192.168.1.50`), TTL par défaut. Ne rien modifier d'autre dans la zone.
+2. **Clé d'API limitée à la zone** : ouvrir https://eu.api.ovh.com/createToken/ , se connecter,
+   puis renseigner :
+   - Application name : `myworkshop-certbot`, description : `Certificat daniel.ldns.fr`
+   - Validity : `Unlimited`
+   - Rights (une ligne par droit) :
+     - `GET` `/domain/zone/`
+     - `GET` `/domain/zone/ldns.fr/*`
+     - `POST` `/domain/zone/ldns.fr/*`
+     - `PUT` `/domain/zone/ldns.fr/*`
+     - `DELETE` `/domain/zone/ldns.fr/*`
+   - Restriction d'IP : facultative (IP publique de la maison).
+
+   OVH affiche trois valeurs : *Application key*, *Application secret*, *Consumer key*. Les
+   transmettre de façon sûre (pas par e-mail en clair) : elles permettent de modifier la zone
+   `ldns.fr`, et rien d'autre sur le compte.
+
+### 6.2 Dans le conteneur
+
+```bash
+apt install -y certbot python3-certbot-dns-ovh
+cp /opt/myworkshop/app/deploy/certbot/ovh.ini.example /etc/letsencrypt/ovh.ini
+chmod 600 /etc/letsencrypt/ovh.ini
+nano /etc/letsencrypt/ovh.ini          # coller les trois clés OVH
+
+install -m 755 /opt/myworkshop/app/deploy/certbot/deploy-hook.sh \
+  /etc/letsencrypt/renewal-hooks/deploy/myworkshop.sh
+
+certbot certonly --dns-ovh --dns-ovh-credentials /etc/letsencrypt/ovh.ini \
+  --dns-ovh-propagation-seconds 60 -d daniel.ldns.fr \
+  --agree-tos -m VOTRE_ADRESSE_EMAIL --non-interactive
+
+/etc/letsencrypt/renewal-hooks/deploy/myworkshop.sh   # première copie vers /etc/caddy/certs
+
+cp /opt/myworkshop/app/deploy/caddy/Caddyfile /etc/caddy/Caddyfile
+systemctl reload caddy || systemctl restart caddy
+```
+
+Le renouvellement est automatique (timer `certbot.timer` de Debian) ; le hook recopie le
+certificat et recharge Caddy. Vérifier avec `certbot renew --dry-run`.
+
+### 6.3 Si daniel.ldns.fr ne répond pas depuis la maison
+
+Certaines box refusent les noms qui pointent vers une adresse locale (protection « DNS
+rebinding »). Vérifier depuis le PC : `nslookup daniel.ldns.fr`. Si aucune adresse n'est
+renvoyée, ajouter dans la box une entrée DNS locale `daniel.ldns.fr` → IP du conteneur (ou
+désactiver la protection pour ce seul nom si la box le permet).
 
 ## 7. Mise à jour
 

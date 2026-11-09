@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, ApiError } from "../api";
-import { extractCode, fetchLabel } from "../qr";
+import { fetchLabel, normalizeCode } from "../qr";
 import type { BoxLayout, Node, NodeDetail } from "../types";
 import PlanView, { loadPlanNames } from "./PlanView";
 import Scanner from "./Scanner";
@@ -32,7 +32,7 @@ export default function LocationPicker({
 
   async function fromCode(raw: string) {
     setError(null);
-    const code = extractCode(raw) ?? raw.trim().toUpperCase();
+    const code = normalizeCode(raw) ?? raw.trim().toUpperCase();
     try {
       const label = await fetchLabel(code);
       if (label.status !== "assigned" || !label.node) {

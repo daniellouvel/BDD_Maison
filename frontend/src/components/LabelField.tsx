@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { extractCode } from "../qr";
+import { normalizeCode } from "../qr";
 import Scanner from "./Scanner";
 
 /** Champ « Étiquette » : on saisit le code (QR-000001) ou on le scanne. */
@@ -14,7 +14,7 @@ export default function LabelField({ value, onChange }: { value: string; onChang
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onBlur={() => {
-            const code = extractCode(value);
+            const code = normalizeCode(value);
             if (code) onChange(code);
           }}
         />
@@ -26,7 +26,7 @@ export default function LabelField({ value, onChange }: { value: string; onChang
         <Scanner
           hint="Scannez l'étiquette à coller"
           onCode={(text) => {
-            onChange(extractCode(text) ?? text.trim());
+            onChange(normalizeCode(text) ?? text.trim());
             setScanning(false);
           }}
         />

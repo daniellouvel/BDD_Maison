@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
 import LabelField from "../components/LabelField";
-import { extractCode } from "../qr";
+import { normalizeCode } from "../qr";
 import type { Node, NodeDetail, NodeKind, SearchHit } from "../types";
 
 /**
@@ -496,7 +496,7 @@ function AddPanel({ parent, onDone }: { parent: NodeDetail | null; onDone: (crea
     // L'élément est créé : l'étiquette est associée ensuite, et réessayable sans le recréer.
     if (labelCode.trim()) {
       try {
-        await api.post(`/qr/labels/${extractCode(labelCode) ?? labelCode.trim()}/assign`, { node_id: id });
+        await api.post(`/qr/labels/${normalizeCode(labelCode) ?? labelCode.trim()}/assign`, { node_id: id });
       } catch (err) {
         setError(`Créé, mais l'étiquette n'a pas pu être associée : ${err instanceof ApiError ? err.message : "erreur"}`);
         setBusy(false);
@@ -554,7 +554,7 @@ function EditPanel({ node, onDone, onCancel }: { node: NodeDetail; onDone: () =>
     try {
       // L'étiquette d'abord : si le code est refusé, rien d'autre n'est modifié.
       if (labelCode.trim()) {
-        await api.post(`/qr/labels/${extractCode(labelCode) ?? labelCode.trim()}/assign`, { node_id: node.id });
+        await api.post(`/qr/labels/${normalizeCode(labelCode) ?? labelCode.trim()}/assign`, { node_id: node.id });
         setLabelCode("");
       }
       const body: Record<string, unknown> = { version: node.version, notes: notes.trim() || null };

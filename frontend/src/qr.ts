@@ -27,3 +27,10 @@ export const EVENT_LABEL: Record<string, string> = {
   replaced: "Remplacée",
   reactivated: "Réactivée",
 };
+
+/** Code d'étiquette depuis ce que l'on tape : « 1 » → QR-000001, « qr-12 » → QR-000012, URL ou code complet aussi. */
+export function normalizeCode(text: string): string | null {
+  const t = text.trim();
+  if (/^\d{1,6}$/.test(t) && Number(t) > 0) return `QR-${t.padStart(6, "0")}`;
+  return extractCode(t);
+}

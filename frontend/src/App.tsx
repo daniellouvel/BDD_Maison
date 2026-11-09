@@ -108,6 +108,21 @@ export default function App() {
           <Route path="*" element={<p className="muted">Page introuvable.</p>} />
         </Routes>
       </main>
+      <nav className="sidebar" aria-label="Menu principal">
+        <p className="side-group">Inventaire</p>
+        <NavLink to="/" end>
+          Accueil
+        </NavLink>
+        <NavLink to="/organisation">Organisation</NavLink>
+        <NavLink to="/nodes">Lieux (ancienne vue)</NavLink>
+        <NavLink to="/search">Rechercher</NavLink>
+        <p className="side-group">Saisie</p>
+        {auth.canWrite && <NavLink to="/articles/new">Ajouter un objet</NavLink>}
+        <NavLink to="/scan">Scanner</NavLink>
+        <p className="side-group">Administration</p>
+        <NavLink to="/qr">Étiquettes QR</NavLink>
+        <NavLink to="/reglages">Réglages</NavLink>
+      </nav>
       <nav className="bottombar">
         <NavLink to="/" end>
           Accueil

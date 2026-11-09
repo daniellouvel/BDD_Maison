@@ -247,3 +247,16 @@ label.checkbox input { width: auto; }
 .content-card span { font-size: 1.2rem; }
 .kind-chip { display: inline-block; font-size: 0.72rem; padding: 0.1rem 0.5rem; border-radius: 999px; border: 1px solid var(--border); color: var(--muted, #555); }
 .ribbon { display: inline-block; margin-left: 0.4rem; font-size: 0.75rem; padding: 0.1rem 0.5rem; border-radius: 4px; background: #f59e0b; color: #fff; }
+
+/* Menu latéral (PC) : toutes les fonctions visibles à gauche, contenu à droite */
+.sidebar { display: none; }
+@media (min-width: 900px) {
+  .bottombar { display: none; }
+  .sidebar { display: flex; flex-direction: column; gap: 0.1rem; position: fixed; top: 0; bottom: 0; left: 0; width: 220px; padding: 4.2rem 0.6rem 1rem; background: var(--card, #fff); border-right: 1px solid var(--border); overflow-y: auto; z-index: 5; }
+  .sidebar a { display: block; padding: 0.5rem 0.7rem; border-radius: 8px; color: inherit; text-decoration: none; font-size: 0.95rem; }
+  .sidebar a:hover { background: rgba(0, 0, 0, 0.05); }
+  .sidebar a.active { background: rgba(180, 83, 9, 0.12); color: var(--accent); font-weight: 600; }
+  .side-group { margin: 0.9rem 0.7rem 0.2rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted, #777); }
+  .content { max-width: 960px; margin-left: 240px; margin-right: auto; padding-left: 1rem; }
+  .topbar { padding-left: 240px; }
+}

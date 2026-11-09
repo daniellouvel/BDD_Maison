@@ -226,7 +226,9 @@ export default function BoxPlan({
     }
   }
 
-  const fontSize = Math.max(6, Math.min(24, Math.min(W, H) / 12));
+  // Traits et textes proportionnels à la taille du plan : sinon, sur une maison, ils deviennent invisibles.
+  const unit = Math.max(W, H) / 250;
+  const fontSize = unit * 4;
 
   return (
     <section className="card">
@@ -261,20 +263,20 @@ export default function BoxPlan({
               <path d={`M ${SNAP * 2} 0 L 0 0 0 ${SNAP * 2}`} fill="none" stroke="#888" strokeOpacity="0.3" strokeWidth="0.5" />
             </pattern>
           </defs>
-          <rect x="0" y="0" width={W} height={H} fill={editing ? `url(#grid-${node.id})` : "none"} stroke="#888" strokeWidth="1.5" />
+          <rect x="0" y="0" width={W} height={H} fill={editing ? `url(#grid-${node.id})` : "none"} stroke="#888" strokeWidth={unit * 1.5} />
           {level.cells.map((c) => (
             <g
               key={c.node_id}
               className="plan-cell"
               onClick={() => !editing && navigate(`/nodes/${c.node_id}`)}
             >
-              <rect x={c.x} y={c.y} width={c.w} height={c.h} />
+              <rect x={c.x} y={c.y} width={c.w} height={c.h} style={{ strokeWidth: unit }} />
               <text x={c.x + c.w / 2} y={c.y + c.h / 2} fontSize={fontSize} textAnchor="middle" dominantBaseline="middle">
                 {names[c.node_id] ?? "Case"}
               </text>
             </g>
           ))}
-          {draft && <rect className="plan-draft" x={draft.x} y={draft.y} width={draft.w} height={draft.h} />}
+          {draft && <rect className="plan-draft" x={draft.x} y={draft.y} width={draft.w} height={draft.h} style={{ strokeWidth: unit }} />}
         </svg>
       ) : (
         <p className="muted">

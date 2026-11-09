@@ -33,7 +33,9 @@ export default function PlanView({
   const level = levels[Math.min(active, levels.length - 1)];
   const W = layout.width_mm;
   const H = layout.height_mm;
-  const fontSize = Math.max(6, Math.min(24, Math.min(W, H) / 12));
+  // Traits et textes proportionnels à la taille du plan : sinon, sur une maison, ils deviennent invisibles.
+  const unit = Math.max(W, H) / 250;
+  const fontSize = unit * 4;
 
   if (!level) return <p className="muted">Aucun étage dans ce plan.</p>;
 
@@ -49,7 +51,7 @@ export default function PlanView({
         </div>
       )}
       <svg className="plan" viewBox={`0 0 ${W} ${H}`}>
-        <rect x="0" y="0" width={W} height={H} fill="none" stroke="#888" strokeWidth="1.5" />
+        <rect x="0" y="0" width={W} height={H} fill="none" stroke="#888" strokeWidth={unit * 1.5} />
         {level.cells.map((c) => {
           const hit = highlight.includes(c.node_id);
           return (
@@ -59,7 +61,7 @@ export default function PlanView({
               style={{ cursor: onCellClick ? "pointer" : "default" }}
               onClick={() => onCellClick?.(c.node_id)}
             >
-              <rect x={c.x} y={c.y} width={c.w} height={c.h} />
+              <rect x={c.x} y={c.y} width={c.w} height={c.h} style={{ strokeWidth: unit }} />
               <text x={c.x + c.w / 2} y={c.y + c.h / 2} fontSize={fontSize} textAnchor="middle" dominantBaseline="middle">
                 {names[c.node_id] ?? "Case"}
               </text>

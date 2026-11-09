@@ -263,7 +263,7 @@ async function articleNames(list: Node[], known: Names): Promise<Names> {
 
 /* ---------- Détail et actions ---------- */
 
-type Panel = "none" | "add" | "move";
+type Panel = "none" | "add" | "edit";
 
 type Moving = { id: string; name: string; version: number };
 
@@ -399,12 +399,26 @@ function Detail({
           >
             Déplacer
           </button>
+          <button type="button" className="secondary" onClick={() => setPanel(panel === "edit" ? "none" : "edit")}>
+            Modifier
+          </button>
           <button type="button" className="secondary danger" onClick={remove}>
             Supprimer
           </button>
         </div>
       )}
 
+      {panel === "edit" && node && (
+        <EditPanel
+          node={node}
+          onDone={() => {
+            setPanel("none");
+            load();
+            onChanged();
+          }}
+          onCancel={() => setPanel("none")}
+        />
+      )}
       {panel === "add" && node && (
         <AddPanel
           parent={node}
@@ -501,3 +515,51 @@ function AddPanel({ parent, onDone }: { parent: NodeDetail | null; onDone: (crea
   );
 }
 
+
+/** Modifier : nom, notes, et unité pour un objet. La quantité se change par les mouvements de stock. */
+function EditPanel({ node, onDone, onCancel }: { node: NodeDetail; onDone: () => void; onCancel: () => void }) {
+  const [name, setName] = useState(node.name ?? "");
+  const [notes, setNotes] = useState(node.notes ?? "");
+  const [unit, setUnit] = useState(node.unit ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (node.kind !== "item" && !name.trim()) return setError("Donnez un nom.");
+    setBusy(true);
+    setError(null);
+    try {
+      const body: Record<string, unknown> = { version: node.version, notes: notes.trim() || null };
+      if (node.kind !== "item") body.name = name.trim();
+      else {
+        body.unit = unit.trim() || null;
+        if (name.trim()) body.name = name.trim();
+      }
+      await api.patch(`/nodes/${node.id}`, body);
+      onDone();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Modification impossible.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className="form detail-card" onSubmit={submit}>
+      <h3>Modifier</h3>
+      <input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} />
+      {node.kind === "item" && <input placeholder="Unité (pcs, g, m…)" value={unit} onChange={(e) => setUnit(e.target.value)} />}
+      <textarea placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+      {error && <p className="error small">{error}</p>}
+      <div className="row">
+        <button type="submit" disabled={busy}>
+          Enregistrer
+        </button>
+        <button type="button" className="secondary" onClick={onCancel}>
+          Annuler
+        </button>
+      </div>
+    </form>
+  );
+}

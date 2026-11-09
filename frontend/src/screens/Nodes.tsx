@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
@@ -264,6 +264,12 @@ function BoxSetup({ boxId, onDone, onChanged }: { boxId: string; onDone: () => v
   const [node, setNode] = useState<NodeDetail | null>(null);
   const [contents, setContents] = useState<Node[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const top = useRef<HTMLElement>(null);
+
+  // La carte apparaît sous le formulaire : on fait défiler la page jusqu'à elle.
+  useEffect(() => {
+    top.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -287,7 +293,7 @@ function BoxSetup({ boxId, onDone, onChanged }: { boxId: string; onDone: () => v
   if (!node) return <p className="muted">Chargement…</p>;
 
   return (
-    <section className="card">
+    <section className="card" ref={top}>
       <h2>Boîte « {node.name} » créée</h2>
 
       <h3>1. Étiquette</h3>

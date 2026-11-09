@@ -190,12 +190,29 @@ export default function BoxPlan({
     await run(() => save({ ...layout, width_mm: width, height_mm: height }), "Enregistrement impossible.");
   }
 
+  /**
+   * Point sous le curseur, en mm. Il s'accroche aux bords des murs et des cases de l'étage affiché
+   * (à 10 px près), sinon à la grille de 5 mm.
+   */
   function toMm(e: PointerEvent<SVGSVGElement>) {
     const r = surface.current!.getBoundingClientRect();
-    return {
-      x: clamp(((e.clientX - r.left) / r.width) * W, W),
-      y: clamp(((e.clientY - r.top) / r.height) * H, H),
-    };
+    const rawX = clamp(((e.clientX - r.left) / r.width) * W, W);
+    const rawY = clamp(((e.clientY - r.top) / r.height) * H, H);
+    const tolerance = (W / r.width) * 10;
+    const toleranceY = (H / r.height) * 10;
+    const xs = [0, W];
+    const ys = [0, H];
+    for (const c of level?.cells ?? []) {
+      xs.push(c.x, c.x + c.w);
+      ys.push(c.y, c.y + c.h);
+    }
+    return { x: attach(rawX, xs, tolerance), y: attach(rawY, ys, toleranceY) };
+  }
+
+  function attach(v: number, candidates: number[], tolerance: number) {
+    let best = candidates[0];
+    for (const c of candidates) if (Math.abs(c - v) < Math.abs(best - v)) best = c;
+    return Math.abs(best - v) <= tolerance ? best : snap(v);
   }
 
   function onDown(e: PointerEvent<SVGSVGElement>) {
@@ -217,7 +234,9 @@ export default function BoxPlan({
     origin.current = null;
     setDraft(null);
     if (!rect) return;
-    const r: Rect = { x: snap(rect.x), y: snap(rect.y), w: snap(rect.w), h: snap(rect.h) };
+    // Les bords sont déjà calés (accrochage ou grille) : on garde les valeurs, arrondies au dixième.
+    const keep = (v: number) => Math.round(v * 10) / 10;
+    const r: Rect = { x: keep(rect.x), y: keep(rect.y), w: keep(rect.w), h: keep(rect.h) };
     if (r.w >= MIN_SIZE && r.h >= MIN_SIZE) {
       setPending(r);
       setChoice("new");

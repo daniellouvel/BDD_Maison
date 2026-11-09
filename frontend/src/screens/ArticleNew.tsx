@@ -231,23 +231,6 @@ export default function ArticleNew() {
       )}
 
       <label>
-        Photo
-        <input type="file" accept="image/*" capture="environment" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
-      </label>
-      {photo && (
-        <PhotoAnalysis
-          photo={photo}
-          onApply={applyIdentification}
-          onUseReference={applyReference}
-          onPickExisting={pickExisting}
-          onAnalysis={(a) => {
-            setAnalysis(a);
-            setAiApplied(false);
-          }}
-        />
-      )}
-
-      <label>
         Nom *
         <input
           value={existing ? existing.name : name}
@@ -431,6 +414,23 @@ export default function ArticleNew() {
             </ul>
           )}
         </>
+      )}
+
+      <label>
+        Photo
+        <input type="file" accept="image/*" capture="environment" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
+      </label>
+      {photo && (
+        <PhotoAnalysis
+          photo={photo}
+          onApply={applyIdentification}
+          onUseReference={applyReference}
+          onPickExisting={pickExisting}
+          onAnalysis={(a) => {
+            setAnalysis(a);
+            setAiApplied(false);
+          }}
+        />
       )}
 
       {quantity !== "" && <LabelPicker value={labelCode} onChange={setLabelCode} />}

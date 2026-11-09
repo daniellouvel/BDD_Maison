@@ -62,7 +62,7 @@ export default function Organisation() {
               </ul>
             </>
           )}
-          <h3 className="org-group">Maison</h3>
+          <h3 className="org-group">Emplacements</h3>
           {roots === null && <p className="muted">Chargement…</p>}
           <ul className="org-list">
             {placed.map((n) => (

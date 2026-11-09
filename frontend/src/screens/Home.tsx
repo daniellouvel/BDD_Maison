@@ -21,6 +21,9 @@ export default function Home() {
   const select = useCallback((id: string) => setParams({ n: id }), [setParams]);
   const [rootAdd, setRootAdd] = useState(false);
   const [moving, setMoving] = useState<Moving | null>(null);
+  // Incrémenté à chaque changement de l'arbre : il se recharge alors.
+  const [treeKey, setTreeKey] = useState(0);
+  const changed = () => setTreeKey((k) => k + 1);
 
   return (
     <div className="explorer">
@@ -50,11 +53,12 @@ export default function Home() {
               parent={null}
               onDone={(created) => {
                 setRootAdd(false);
+                changed();
                 if (created) select(created);
               }}
             />
           )}
-          <Tree selected={selected} onSelect={select} />
+          <Tree key={treeKey} selected={selected} onSelect={select} />
         </aside>
         <section className="explorer-detail card">
           {selected ? (
@@ -63,9 +67,11 @@ export default function Home() {
               onSelect={select}
               canWrite={canWrite}
               moving={moving}
+              onChanged={changed}
               onStartMove={setMoving}
               onCancelMove={() => setMoving(null)}
               onMoved={(movedId) => {
+                changed();
                 setMoving(null);
                 select(movedId);
               }}
@@ -269,6 +275,7 @@ function Detail({
   onStartMove,
   onCancelMove,
   onMoved,
+  onChanged,
 }: {
   id: string;
   onSelect: (id: string) => void;
@@ -277,6 +284,7 @@ function Detail({
   onStartMove: (m: Moving) => void;
   onCancelMove: () => void;
   onMoved: (id: string) => void;
+  onChanged: () => void;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -287,6 +295,7 @@ function Detail({
     try {
       await api.patch(`/nodes/${moving.id}`, { version: moving.version, parent_id: target.id });
       onMoved(moving.id);
+      onChanged();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Déplacement impossible.");
     } finally {
@@ -323,6 +332,7 @@ function Detail({
     if (!window.confirm(`Supprimer « ${node.name ?? node.article_name ?? "cet élément"} » ?\n\n${warning}`)) return;
     try {
       await api.post(`/nodes/${node.id}/archive-tree`, {});
+      onChanged();
       onSelect(node.parent_id ?? "");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Suppression impossible.");
@@ -401,6 +411,7 @@ function Detail({
           onDone={(created) => {
             setPanel("none");
             load();
+            onChanged();
             if (created) onSelect(created);
           }}
         />

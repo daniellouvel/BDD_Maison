@@ -120,6 +120,16 @@ def validate_attributes(
     return values
 
 
+def delete_node_type(db: Session, node_type_id: uuid.UUID, actor: User) -> None:
+    """Supprime un type. Les éléments qui l'utilisaient gardent leur nom, sans type."""
+    node_type = db.get(NodeType, node_type_id)
+    if node_type is None:
+        raise ApiError(404, "not_found", "Type introuvable")
+    audit(db, "node_type", node_type, actor, "delete")
+    db.delete(node_type)
+    db.commit()
+
+
 def create_node_type(db: Session, data: NodeTypeIn, actor: User) -> NodeType:
     if db.scalar(select(NodeType).where(NodeType.name == data.name)):
         raise ApiError(409, "exists", "Ce type existe déjà.")

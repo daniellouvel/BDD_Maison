@@ -56,6 +56,12 @@ def create_node_type(body: NodeTypeIn, db: DbSession, user: Writer) -> NodeType:
     return catalog.create_node_type(db, body, user)
 
 
+@router.delete("/node-types/{node_type_id}", status_code=204)
+def delete_node_type(node_type_id: uuid.UUID, db: DbSession, user: Writer) -> Response:
+    catalog.delete_node_type(db, node_type_id, user)
+    return Response(status_code=204)
+
+
 @router.get("/articles", response_model=list[ArticleOut])
 def list_articles(
     db: DbSession,

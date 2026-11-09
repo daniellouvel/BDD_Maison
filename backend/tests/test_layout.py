@@ -148,3 +148,13 @@ def test_node_type_has_a_genre(admin_client: TestClient) -> None:
     assert bad.status_code == 422
     listed = admin_client.get(f"{API}/node-types").json()
     assert {t["name"]: t["genre"] for t in listed}["Casier"] == "contenant"
+
+
+def test_deleting_a_type_keeps_its_elements(admin_client: TestClient) -> None:
+    casier = admin_client.post(f"{API}/node-types", json={"name": "Casier X", "genre": "contenant"}, headers=CSRF).json()
+    boite = _node(admin_client, kind="container", name="Boîte typée", node_type_id=casier["id"])
+    r = admin_client.delete(f"{API}/node-types/{casier['id']}", headers=CSRF)
+    assert r.status_code == 204
+    kept = admin_client.get(f"{API}/nodes/{boite['id']}")
+    assert kept.status_code == 200 and kept.json()["node_type_id"] is None
+    assert admin_client.delete(f"{API}/node-types/{casier['id']}", headers=CSRF).status_code == 404

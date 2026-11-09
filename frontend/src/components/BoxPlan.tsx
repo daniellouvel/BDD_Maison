@@ -230,7 +230,7 @@ export default function BoxPlan({
 
   return (
     <section className="card">
-      <h2>Plan de la boîte</h2>
+      <h2>Plan</h2>
 
       {levels.length > 0 && (
         <div className="tabs">

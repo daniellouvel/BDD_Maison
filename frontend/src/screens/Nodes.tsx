@@ -165,7 +165,7 @@ export default function Nodes() {
       )}
 
       {node && <ItemLocation node={node} />}
-      {node?.kind === "container" && <BoxPlan node={node} contents={children} canWrite={canWrite} onChanged={load} />}
+      {node && node.kind !== "item" && <BoxPlan node={node} contents={children} canWrite={canWrite} onChanged={load} />}
       {node?.kind !== "item" && (
         <>
           <section className="card">

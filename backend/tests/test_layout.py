@@ -158,3 +158,17 @@ def test_deleting_a_type_keeps_its_elements(admin_client: TestClient) -> None:
     kept = admin_client.get(f"{API}/nodes/{boite['id']}")
     assert kept.status_code == 200 and kept.json()["node_type_id"] is None
     assert admin_client.delete(f"{API}/node-types/{casier['id']}", headers=CSRF).status_code == 404
+
+
+def test_a_location_such_as_a_cabinet_can_have_a_plan(admin_client: TestClient) -> None:
+    armoire = _node(admin_client, kind="location", name="Armoire atelier")
+    etagere = _node(admin_client, kind="container", name="Étagère 1", parent_id=armoire["id"])
+    body = {
+        "version": armoire["version"],
+        "width_mm": 800,
+        "height_mm": 1800,
+        "levels": [{"node_id": etagere["id"], "cells": []}],
+    }
+    r = _put_layout(admin_client, armoire["id"], body)
+    assert r.status_code == 200, r.text
+    assert r.json()["layout"]["width_mm"] == 800

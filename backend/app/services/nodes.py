@@ -243,8 +243,8 @@ def set_layout(db: Session, node: Node, data: LayoutIn, actor: User) -> Node:
     """
     if node.archived_at is not None:
         raise ApiError(404, "not_found", "Élément introuvable")
-    if node.kind != "container":
-        raise ApiError(422, "invalid_fields", "Seule une boîte (contenant) a un plan.")
+    if node.kind == "item":
+        raise ApiError(422, "invalid_fields", "Un objet n'a pas de plan : seuls les emplacements et contenants en ont un.")
     if data.version != node.version:
         raise conflict_version()
 

@@ -26,7 +26,10 @@ export default function ArticleNew() {
   const [quantity, setQuantity] = useState("1");
   const [unit, setUnit] = useState("");
   const [categoryId, setCategoryId] = useState("");
-  const [detailed, setDetailed] = useState(false);
+  const [datasheet, setDatasheet] = useState<File | null>(null);
+  const [links, setLinks] = useState<{ title: string; url: string }[]>([]);
+  const [linkTitle, setLinkTitle] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
   const [brand, setBrand] = useState("");
   const [mpn, setMpn] = useState("");
   const [description, setDescription] = useState("");
@@ -78,7 +81,6 @@ export default function ArticleNew() {
     if (ident.mpn) setMpn(ident.mpn);
     if (ident.description) setDescription(ident.description);
     if (ident.keywords.length) setKeywords(ident.keywords.join(" "));
-    setDetailed(true);
     setAiApplied(true);
   }
 
@@ -86,7 +88,6 @@ export default function ArticleNew() {
     setExisting(null);
     setMpn(reference);
     if (!name.trim()) setName(reference);
-    setDetailed(true);
     setAiApplied(true);
   }
 
@@ -103,6 +104,10 @@ export default function ArticleNew() {
     setAnalysis(null);
     setAiApplied(false);
     setLabelCode(null);
+    setDatasheet(null);
+    setLinks([]);
+    setLinkTitle("");
+    setLinkUrl("");
     setSaved(null);
     setError(null);
   }
@@ -155,6 +160,27 @@ export default function ArticleNew() {
         form.append("article_id", article.id);
         form.append("file", photo);
         await api.post("/attachments", form);
+      }
+      // Documents : un échec ici ne doit pas faire perdre l'objet déjà enregistré.
+      const docErrors: string[] = [];
+      if (datasheet) {
+        const form = new FormData();
+        form.append("kind", "datasheet");
+        form.append("article_id", article.id);
+        form.append("title", datasheet.name);
+        form.append("file", datasheet);
+        await api.post("/attachments", form).catch(() => docErrors.push(`datasheet « ${datasheet.name} »`));
+      }
+      for (const l of links) {
+        const form = new FormData();
+        form.append("kind", "link");
+        form.append("article_id", article.id);
+        form.append("url", l.url);
+        if (l.title) form.append("title", l.title);
+        await api.post("/attachments", form).catch(() => docErrors.push(`lien ${l.url}`));
+      }
+      if (docErrors.length) {
+        setWarning(`Objet enregistré, mais n'ont pas pu être ajoutés : ${docErrors.join(", ")}.`);
       }
       if (analysis) {
         // Trace de ce qui a été fait des suggestions ; sans importance pour l'utilisateur.
@@ -336,10 +362,8 @@ export default function ArticleNew() {
             </label>
           ))}
 
-          <button type="button" className="linklike" onClick={() => setDetailed(!detailed)}>
-            {detailed ? "Masquer la fiche détaillée" : "Fiche détaillée…"}
-          </button>
-          {detailed && (
+          <h3>Fiche détaillée</h3>
+          {(
             <>
               <label>
                 Marque
@@ -362,6 +386,49 @@ export default function ArticleNew() {
                 <input type="number" step="any" min="0" value={minQuantity} onChange={(e) => setMinQuantity(e.target.value)} />
               </label>
             </>
+          )}
+
+          <h3>Documents</h3>
+          <label>
+            Datasheet (PDF)
+            <input type="file" accept="application/pdf" onChange={(e) => setDatasheet(e.target.files?.[0] ?? null)} />
+          </label>
+          <div className="form">
+            <input placeholder="Titre du lien, ex. Dépôt GitHub" value={linkTitle} onChange={(e) => setLinkTitle(e.target.value)} />
+            <input
+              type="url"
+              placeholder="https://…"
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+            />
+            <button
+              type="button"
+              className="secondary"
+              disabled={!linkUrl.trim()}
+              onClick={() => {
+                setLinks([...links, { title: linkTitle.trim(), url: linkUrl.trim() }]);
+                setLinkTitle("");
+                setLinkUrl("");
+              }}
+            >
+              Ajouter ce lien
+            </button>
+          </div>
+          {links.length > 0 && (
+            <ul className="list">
+              {links.map((l, i) => (
+                <li key={i}>
+                  {l.title || l.url}{" "}
+                  <button
+                    type="button"
+                    className="linklike"
+                    onClick={() => setLinks(links.filter((_, j) => j !== i))}
+                  >
+                    Retirer
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
         </>
       )}

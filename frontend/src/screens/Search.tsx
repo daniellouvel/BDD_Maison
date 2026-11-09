@@ -8,6 +8,8 @@ export default function Search() {
   const [params, setParams] = useSearchParams();
   const query = params.get("q") ?? "";
   const [input, setInput] = useState(query);
+  const [savedNow, setSavedNow] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [hits, setHits] = useState<SearchHit[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [photoSearch, setPhotoSearch] = useState(false);
@@ -53,6 +55,8 @@ export default function Search() {
   function submit(e: FormEvent) {
     e.preventDefault();
     setPhotoHits(null);
+    setSavedNow(false);
+    setSaveError(null);
     setParams(input.trim() ? { q: input.trim() } : {});
   }
 
@@ -69,6 +73,31 @@ export default function Search() {
         />
         <button type="submit">OK</button>
       </form>
+      {query && (
+        <p className="save-view">
+          {savedNow ? (
+            <span className="muted small">Recherche enregistrée.</span>
+          ) : (
+            <button
+              type="button"
+              className="linklike"
+              onClick={async () => {
+                const name = window.prompt("Nom de cette vue (ex. Résistances, Visserie)", query);
+                if (!name?.trim()) return;
+                try {
+                  await api.post("/saved-searches", { name: name.trim(), query });
+                  setSavedNow(true);
+                } catch (e) {
+                  setSaveError(e instanceof ApiError ? e.message : "Enregistrement impossible.");
+                }
+              }}
+            >
+              ★ Enregistrer cette recherche
+            </button>
+          )}
+          {saveError && <span className="error small"> {saveError}</span>}
+        </p>
+      )}
       {photoSearch && (
         <label className="filebutton">
           {photoBusy ? "Recherche…" : "Rechercher avec une photo"}

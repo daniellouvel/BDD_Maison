@@ -434,3 +434,17 @@ class AnalysisOut(BaseModel):
 class SuggestionDecision(BaseModel):
     status: Literal["accepted", "rejected"]
     article_id: uuid.UUID | None = None
+
+
+# --- Vues enregistrées ----------------------------------------------------------------------------
+
+
+class SavedViewIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    query: str = Field(min_length=1, max_length=200)
+
+
+class SavedViewOut(_Base):
+    id: uuid.UUID
+    name: str
+    query: str

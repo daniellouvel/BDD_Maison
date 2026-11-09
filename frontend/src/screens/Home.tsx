@@ -11,12 +11,17 @@ export default function Home() {
   const [q, setQ] = useState("");
   const [dash, setDash] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [views, setViews] = useState<{ id: string; name: string; query: string }[]>([]);
 
   useEffect(() => {
     api
       .get<Dashboard>("/dashboard")
       .then(setDash)
       .catch((e) => setError(e instanceof ApiError ? e.message : "Erreur de chargement."));
+    api
+      .get<{ id: string; name: string; query: string }[]>("/saved-searches")
+      .then(setViews)
+      .catch(() => setViews([]));
   }, []);
 
   function search(e: FormEvent) {
@@ -115,6 +120,19 @@ export default function Home() {
               </Link>
             </section>
           </div>
+
+          {views.length > 0 && (
+            <>
+              <h2 className="home-title">Vues enregistrées</h2>
+              <div className="saved-views">
+                {views.map((v) => (
+                  <Link key={v.id} to={`/search?q=${encodeURIComponent(v.query)}`}>
+                    ★ {v.name}
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
 
           <p className="muted small inventory-line">
             {dash.articles} références · {dash.items} objets / lots · {dash.containers} contenants ·{" "}

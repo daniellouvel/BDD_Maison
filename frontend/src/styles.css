@@ -260,3 +260,8 @@ label.checkbox input { width: auto; }
   .content { max-width: 960px; margin-left: 240px; margin-right: auto; padding-left: 1rem; }
   .topbar { padding-left: 240px; }
 }
+
+/* Vues enregistrées */
+.save-view { margin: -0.4rem 0 0.8rem; font-size: 0.9rem; }
+.saved-views { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.4rem 0 0; }
+.saved-views a { padding: 0.3rem 0.7rem; border-radius: 999px; border: 1px solid var(--border); background: #fff; text-decoration: none; color: inherit; font-size: 0.9rem; }

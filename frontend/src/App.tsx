@@ -8,6 +8,7 @@ import Home from "./screens/Home";
 import LabelDetail from "./screens/LabelDetail";
 import Login from "./screens/Login";
 import Nodes from "./screens/Nodes";
+import Organisation from "./screens/Organisation";
 import QrManager from "./screens/QrManager";
 import Scan from "./screens/Scan";
 import Search from "./screens/Search";
@@ -97,6 +98,7 @@ export default function App() {
           <Route path="/articles/:id" element={<ArticleDetailScreen />} />
           <Route path="/nodes" element={<Nodes />} />
           <Route path="/nodes/:id" element={<Nodes />} />
+          <Route path="/organisation" element={<Organisation />} />
           <Route path="/scan" element={<Scan />} />
           <Route path="/qr" element={<QrManager />} />
           <Route path="/qr/labels/:code" element={<LabelDetail />} />

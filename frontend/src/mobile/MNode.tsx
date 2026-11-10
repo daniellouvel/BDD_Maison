@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
+import LabelField from "../components/LabelField";
 import LocationPicker from "../components/LocationPicker";
 import PlanPreview from "../components/PlanPreview";
 import Scanner from "../components/Scanner";
@@ -227,21 +228,38 @@ export default function MNode() {
 function AddSheet({ parent, onClose, onDone }: { parent: NodeDetail | null; onClose: () => void; onDone: () => void }) {
   const [kind, setKind] = useState<"location" | "container">(parent ? "container" : "location");
   const [name, setName] = useState("");
+  const [labelCode, setLabelCode] = useState("");
+  // Identifiant de l'élément déjà créé : si l'étiquette échoue, on réessaie sans le recréer.
+  const [createdId, setCreatedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!createdId && !name.trim()) return;
     setBusy(true);
     setError(null);
+    let id = createdId;
     try {
-      await api.post("/nodes", { kind, name: name.trim(), parent_id: parent?.id ?? null });
-      onDone();
+      if (!id) {
+        id = (await api.post<{ id: string }>("/nodes", { kind, name: name.trim(), parent_id: parent?.id ?? null })).id;
+        setCreatedId(id);
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Ajout impossible.");
       setBusy(false);
+      return;
     }
+    if (labelCode.trim()) {
+      try {
+        await api.post(`/qr/labels/${normalizeCode(labelCode) ?? labelCode.trim().toUpperCase()}/assign`, { node_id: id });
+      } catch (err) {
+        setError(`Créé, mais l'étiquette n'a pas pu être associée : ${err instanceof ApiError ? err.message : "erreur"}`);
+        setBusy(false);
+        return;
+      }
+    }
+    onDone();
   }
 
   return (
@@ -257,11 +275,26 @@ function AddSheet({ parent, onClose, onDone }: { parent: NodeDetail | null; onCl
             ]}
           />
         )}
-        <input placeholder={kind === "container" ? "Nom (ex. Boîte vis M3)" : "Nom (ex. Atelier)"} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        <input
+          placeholder={kind === "container" ? "Nom (ex. Boîte vis M3)" : "Nom (ex. Atelier)"}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          disabled={createdId !== null}
+          autoFocus
+        />
+        <label>
+          Étiquette QR à coller dessus (facultatif)
+          <LabelField value={labelCode} onChange={setLabelCode} />
+        </label>
         {error && <p className="error small">{error}</p>}
-        <button type="submit" disabled={busy || !name.trim()}>
-          {busy ? "Ajout…" : "Ajouter"}
+        <button type="submit" disabled={busy || (!createdId && !name.trim())}>
+          {busy ? "Ajout…" : createdId ? "Réessayer l'étiquette" : "Ajouter"}
         </button>
+        {createdId && (
+          <button type="button" className="secondary" onClick={onDone}>
+            Continuer sans étiquette
+          </button>
+        )}
       </form>
     </Sheet>
   );

@@ -4,7 +4,8 @@ import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
 import LabelField from "../components/LabelField";
 import ArticleDetailScreen from "./ArticleDetail";
-import { normalizeCode } from "../qr";
+import { fetchLabel, normalizeCode } from "../qr";
+import Scanner from "../components/Scanner";
 import type { Node, NodeDetail, NodeKind, SearchHit } from "../types";
 
 /**
@@ -37,12 +38,15 @@ export default function Home() {
         </span>
       </div>
       {moving && (
-        <div className="move-banner">
-          Déplacer « {moving.name} » : cliquez la destination dans l'arbre, puis « Déplacer ici ».{" "}
-          <button type="button" className="linklike" onClick={() => setMoving(null)}>
-            Annuler
-          </button>
-        </div>
+        <MoveBanner
+          moving={moving}
+          onCancel={() => setMoving(null)}
+          onMoved={(movedId) => {
+            setMoving(null);
+            changed();
+            select(movedId);
+          }}
+        />
       )}
       <div className="explorer-body">
         <aside className="explorer-tree card">
@@ -644,5 +648,70 @@ function EditPanel({ node, onDone, onCancel }: { node: NodeDetail; onDone: () =>
         </button>
       </div>
     </form>
+  );
+}
+
+/**
+ * Bandeau du déplacement : la destination se choisit dans l'arbre, ou en scannant son étiquette.
+ */
+function MoveBanner({
+  moving,
+  onCancel,
+  onMoved,
+}: {
+  moving: Moving;
+  onCancel: () => void;
+  onMoved: (movedId: string) => void;
+}) {
+  const [scanning, setScanning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // Déplace l'objet vers la destination (même règle que le bouton « Déplacer ici »).
+  async function moveTo(target: NodeDetail) {
+    if (target.kind === "item") {
+      setError("Un objet ne peut pas contenir d'autres éléments : scannez un emplacement ou un contenant.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await api.patch(`/nodes/${moving.id}`, { version: moving.version, parent_id: target.id });
+      setScanning(false);
+      onMoved(moving.id);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Déplacement impossible.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onCode(text: string) {
+    setError(null);
+    const code = normalizeCode(text);
+    if (!code) return setError("Ce n'est pas une étiquette QR.");
+    try {
+      const label = await fetchLabel(code);
+      if (label.status !== "assigned" || !label.node) {
+        return setError(`${code} n'est affectée à aucun emplacement.`);
+      }
+      await moveTo(label.node);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Lecture impossible.");
+    }
+  }
+
+  return (
+    <div className="move-banner">
+      <p>
+        Déplacer « {moving.name} » : cliquez la destination dans l'arbre, puis « Déplacer ici », ou{" "}
+        <button type="button" className="linklike" onClick={() => setScanning(!scanning)}>
+          {scanning ? "fermer le scan" : "scanner la destination"}
+        </button>
+        . <button type="button" className="linklike" onClick={onCancel}>Annuler</button>
+      </p>
+      {scanning && <Scanner onCode={onCode} hint={busy ? "Déplacement…" : "Scannez l'étiquette de la destination"} />}
+      {error && <p className="error small">{error}</p>}
+    </div>
   );
 }

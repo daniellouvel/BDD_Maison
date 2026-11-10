@@ -47,6 +47,7 @@ export interface LocationRef {
   node_id: string;
   quantity: string;
   path: string[];
+  status: LotStatus;
 }
 
 export interface ArticleDetail extends Article {
@@ -70,6 +71,30 @@ export interface Node {
   updated_at: string;
   /** Adresse lisible (ex. « boite-1 »), utilisée dans l'URL. */
   slug?: string | null;
+  /** Statut d'un objet : en stock, prêté ou sorti (absent pour emplacements et contenants). */
+  status?: LotStatus;
+}
+
+export type LotStatus = "in_stock" | "lent" | "removed";
+
+export interface Loan {
+  id: string;
+  node_id: string;
+  node_name: string;
+  recipient: string;
+  quantity: string;
+  out_at: string;
+  due_at: string | null;
+  returned_at: string | null;
+  notes: string | null;
+}
+
+export interface StockValue {
+  currency: string;
+  in_stock: string;
+  lent: string;
+  unpriced_lots: number;
+  priced_lots: number;
 }
 
 export interface NodeDetail extends Node {

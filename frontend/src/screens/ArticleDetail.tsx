@@ -4,6 +4,7 @@ import { api, ApiError, fileUrl, formatQty, thumbUrl } from "../api";
 import { useAuth } from "../auth";
 import CategoryFields from "../components/CategoryFields";
 import CategoryPicker from "../components/CategoryPicker";
+import { LotActions, STATUS_LABEL } from "../components/LotStatus";
 import MovementForm from "../components/MovementForm";
 import SimilarList from "../components/SimilarList";
 import { categoryLabel, inheritedFields, nameWithValue } from "../fields";
@@ -363,23 +364,37 @@ export default function ArticleDetailScreen({ articleId }: { articleId?: string 
               <li key={loc.node_id}>
                 <Link to={`/nodes/${loc.node_id}`}>{loc.path.length ? loc.path.join(" › ") : "Non localisé"}</Link>
                 <strong> × {formatQty(loc.quantity)}</strong>
+                {loc.status !== "in_stock" && (
+                  <span className="muted small"> · {STATUS_LABEL[loc.status]}</span>
+                )}
                 {canWrite && (
                   <button
                     type="button"
                     className="linklike"
                     onClick={() => setOpenMovement(openMovement === loc.node_id ? null : loc.node_id)}
                   >
-                    Mouvement
+                    Gérer
                   </button>
                 )}
                 {openMovement === loc.node_id && (
-                  <MovementForm
-                    nodeId={loc.node_id}
-                    onDone={() => {
-                      setOpenMovement(null);
-                      load();
-                    }}
-                  />
+                  <>
+                    {loc.status === "in_stock" && (
+                      <MovementForm
+                        nodeId={loc.node_id}
+                        onDone={() => {
+                          setOpenMovement(null);
+                          load();
+                        }}
+                      />
+                    )}
+                    <LotActions
+                      nodeId={loc.node_id}
+                      onDone={() => {
+                        setOpenMovement(null);
+                        load();
+                      }}
+                    />
+                  </>
                 )}
               </li>
             ))}

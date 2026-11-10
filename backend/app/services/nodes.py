@@ -121,6 +121,7 @@ def detail(db: Session, node: Node) -> NodeDetail:
         article_name=article_name,
         layout=node.layout,
         slug=node.slug,
+        status=node.status,
     )
 
 

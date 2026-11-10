@@ -56,7 +56,7 @@ def _clean_tables() -> Iterator[None]:
     with get_engine().begin() as conn:
         conn.execute(
             text(
-                "TRUNCATE purchase_items, price_points, supplier_offers, suppliers, plans, saved_views, ai_suggestions, image_embeddings, qr_events, print_items, print_sheets, qr_labels, app_settings, "
+                "TRUNCATE loans, purchase_items, price_points, supplier_offers, suppliers, plans, saved_views, ai_suggestions, image_embeddings, qr_events, print_items, print_sheets, qr_labels, app_settings, "
                 "audit_log, attachments, movements, nodes, node_types, articles, "
                 "field_defs, categories, sessions, users RESTART IDENTITY CASCADE"
             )

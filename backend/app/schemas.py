@@ -116,6 +116,7 @@ class LocationRef(BaseModel):
     node_id: uuid.UUID
     quantity: Decimal
     path: list[str]
+    status: str = "in_stock"
 
 
 class ArticleDetail(ArticleOut):
@@ -162,6 +163,7 @@ class NodeOut(_Base):
     version: int
     updated_at: dt.datetime
     slug: str | None = None
+    status: str = "in_stock"
 
 
 class BreadcrumbItem(BaseModel):
@@ -623,3 +625,38 @@ class PurchaseOut(_Base):
 class ReceiveIn(BaseModel):
     version: int
     node_id: uuid.UUID
+
+
+# --- Prêts, sorties et valeur du stock ----------------------------------------------------------
+
+
+class LendIn(BaseModel):
+    version: int
+    recipient: str = Field(min_length=1, max_length=120)
+    due_at: dt.datetime | None = None
+    notes: str | None = Field(default=None, max_length=1000)
+
+
+class RemoveIn(BaseModel):
+    version: int
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class LoanOut(_Base):
+    id: uuid.UUID
+    node_id: uuid.UUID
+    node_name: str
+    recipient: str
+    quantity: Decimal
+    out_at: dt.datetime
+    due_at: dt.datetime | None
+    returned_at: dt.datetime | None
+    notes: str | None
+
+
+class StockValueOut(BaseModel):
+    currency: str = "EUR"
+    in_stock: Decimal
+    lent: Decimal
+    unpriced_lots: int
+    priced_lots: int

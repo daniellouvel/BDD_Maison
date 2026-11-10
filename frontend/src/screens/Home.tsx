@@ -341,8 +341,11 @@ function Detail({
 
   const load = useCallback(() => {
     setError(null);
-    Promise.all([api.get<NodeDetail>(`/nodes/${id}`), api.get<Node[]>(`/nodes?parent_id=${id}`)])
-      .then(async ([d, k]) => {
+    // `id` peut être un slug (adresse lisible) : les enfants se cherchent par l'identifiant réel.
+    api
+      .get<NodeDetail>(`/nodes/${id}`)
+      .then(async (d) => {
+        const k = await api.get<Node[]>(`/nodes?parent_id=${d.id}`);
         setNode(d);
         setKids(k);
         // Un objet porte le nom de son article : on le charge pour l'afficher dans la liste.

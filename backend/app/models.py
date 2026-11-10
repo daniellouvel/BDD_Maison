@@ -29,6 +29,7 @@ ROLES = ("admin", "membre", "lecture")
 NODE_KINDS = ("location", "container", "item")
 NODE_TYPE_GENRES = ("emplacement", "contenant", "boite", "tous")
 MOVEMENT_KINDS = ("in", "out", "consume", "adjust", "move")
+NODE_STATUSES = ("in_stock", "lent", "removed")
 ATTACHMENT_KINDS = ("photo", "datasheet", "document", "link", "note")
 FIELD_TYPES = ("text", "number", "enum", "bool")
 
@@ -139,6 +140,7 @@ class Node(Base):
     __table_args__ = (
         Index("uq_nodes_slug", "slug", unique=True),
         CheckConstraint(_in("kind", NODE_KINDS), name="ck_nodes_kind"),
+        CheckConstraint(_in("status", NODE_STATUSES), name="ck_nodes_status"),
         CheckConstraint("kind = 'item' OR name IS NOT NULL", name="ck_nodes_name_required"),
         CheckConstraint(
             "(kind = 'item' AND article_id IS NOT NULL AND quantity IS NOT NULL AND quantity >= 0)"
@@ -170,6 +172,24 @@ class Node(Base):
     layout: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     # Nom lisible dans l'adresse (« boite-1 »), unique parmi tous les éléments.
     slug: Mapped[str | None] = mapped_column(String(200))
+    # Statut d'un lot : en stock, prêté (à revenir) ou sorti. Ne concerne que les objets.
+    status: Mapped[str] = mapped_column(String(16), default="in_stock", server_default="in_stock")
+
+
+class Loan(Base):
+    """Prêt d'un lot : le lot garde son stock, son statut passe à « lent » jusqu'au retour."""
+
+    __tablename__ = "loans"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    node_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("nodes.id", ondelete="RESTRICT"), index=True)
+    recipient: Mapped[str] = mapped_column(String(120))
+    quantity: Mapped[Decimal] = mapped_column(Numeric(12, 3))
+    out_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    due_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    returned_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    notes: Mapped[str | None] = mapped_column(Text)
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 
 
 class Movement(Base):

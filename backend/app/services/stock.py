@@ -47,7 +47,7 @@ def totals_by_article(db: Session, article_ids: list[uuid.UUID]) -> dict[uuid.UU
 def locations_for(db: Session, article_id: uuid.UUID) -> list[LocationRef]:
     items = db.scalars(
         select(Node)
-        .where(*_active_items(article_id))
+        .where(*_active_items(article_id), Node.status != "removed")
         .order_by(Node.created_at)
     ).all()
     refs: list[LocationRef] = []
@@ -59,6 +59,7 @@ def locations_for(db: Session, article_id: uuid.UUID) -> list[LocationRef]:
                 node_id=item.id,
                 quantity=item.quantity or ZERO,
                 path=[node_service.label(db, n) for n in path],
+                status=item.status,
             )
         )
     return refs
@@ -81,6 +82,8 @@ def apply(db: Session, data: MovementIn, actor: User) -> Movement:
         raise ApiError(404, "not_found", "Objet introuvable")
     if node.kind != "item":
         raise ApiError(422, "not_item", "Les mouvements de stock ne concernent que les objets.")
+    if node.status != "in_stock":
+        raise ApiError(422, "item_not_in_stock", "Ce lot est prêté ou sorti : il ne peut pas être modifié.")
 
     if data.kind == "move":
         if data.to_node_id is None:

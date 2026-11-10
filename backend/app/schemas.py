@@ -523,3 +523,103 @@ class PlanApply(BaseModel):
 
     node_id: uuid.UUID
     node_version: int
+
+
+# --- Fournisseurs, offres, prix et liste de courses ---------------------------------------------
+
+PurchaseStatus = Literal["to_buy", "ordered", "received", "cancelled"]
+
+
+class SupplierIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    url: str | None = Field(default=None, max_length=500)
+    notes: str | None = None
+
+
+class SupplierPatch(BaseModel):
+    version: int
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    url: str | None = Field(default=None, max_length=500)
+    notes: str | None = None
+
+
+class SupplierOut(_Base):
+    id: uuid.UUID
+    name: str
+    url: str | None
+    notes: str | None
+    version: int
+
+
+class OfferIn(BaseModel):
+    supplier_id: uuid.UUID
+    supplier_ref: str | None = Field(default=None, max_length=120)
+    url: str | None = Field(default=None, max_length=500)
+
+
+class OfferOut(_Base):
+    id: uuid.UUID
+    article_id: uuid.UUID
+    supplier_id: uuid.UUID
+    supplier_name: str
+    supplier_ref: str | None
+    url: str | None
+    version: int
+    last_unit_price: Decimal | None = None
+    last_currency: str | None = None
+    last_observed_at: dt.datetime | None = None
+
+
+class PriceIn(BaseModel):
+    unit_price: Decimal = Field(gt=0, max_digits=12, decimal_places=4)
+    currency: str = Field(default="EUR", min_length=3, max_length=3)
+    observed_at: dt.datetime | None = None
+
+
+class PriceOut(_Base):
+    id: uuid.UUID
+    offer_id: uuid.UUID
+    unit_price: Decimal
+    currency: str
+    observed_at: dt.datetime
+    source: str
+
+
+class PurchaseIn(BaseModel):
+    label: str = Field(default="", max_length=200)
+    article_id: uuid.UUID | None = None
+    offer_id: uuid.UUID | None = None
+    quantity: Decimal = Field(gt=0, max_digits=12, decimal_places=3)
+    unit_price: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=4)
+
+
+class PurchasePatch(BaseModel):
+    """Présence d'un champ dans le JSON compte : `offer_id: null` retire le fournisseur."""
+
+    version: int
+    label: str | None = Field(default=None, max_length=200)
+    quantity: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=3)
+    unit_price: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=4)
+    offer_id: uuid.UUID | None = None
+    status: PurchaseStatus | None = None
+
+
+class PurchaseOut(_Base):
+    id: uuid.UUID
+    label: str
+    article_id: uuid.UUID | None
+    article_name: str | None
+    offer_id: uuid.UUID | None
+    supplier_name: str | None
+    quantity: Decimal
+    unit_price: Decimal | None
+    status: str
+    received_node_id: uuid.UUID | None
+    version: int
+    created_at: dt.datetime
+    updated_at: dt.datetime
+
+
+class ReceiveIn(BaseModel):
+    version: int
+    node_id: uuid.UUID

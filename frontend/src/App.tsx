@@ -7,6 +7,8 @@ import Categories from "./screens/Categories";
 import LabelDetail from "./screens/LabelDetail";
 import Login from "./screens/Login";
 import QrManager from "./screens/QrManager";
+import Achats from "./screens/Achats";
+import Fournisseurs from "./screens/Fournisseurs";
 import PlanEditor from "./screens/PlanEditor";
 import PlanModelEditor from "./screens/PlanModelEditor";
 import Plans from "./screens/Plans";
@@ -104,6 +106,8 @@ export default function App() {
           <Route path="/plan/:id" element={<PlanEditor />} />
           <Route path="/plans" element={<Plans />} />
           <Route path="/plans/:id" element={<PlanModelEditor />} />
+          <Route path="/achats" element={<Achats />} />
+          <Route path="/fournisseurs" element={<Fournisseurs />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/scan" element={<Scan />} />
           <Route path="/reglages" element={<Settings />} />
@@ -124,6 +128,8 @@ export default function App() {
         <NavLink to="/scan">Scanner</NavLink>
         <NavLink to="/categories">Catégories</NavLink>
         <NavLink to="/plans">Plans</NavLink>
+        <NavLink to="/achats">Achats</NavLink>
+        <NavLink to="/fournisseurs">Fournisseurs</NavLink>
         <NavLink to="/qr">Étiquettes QR</NavLink>
         <NavLink to="/reglages">Réglages</NavLink>
       </nav>

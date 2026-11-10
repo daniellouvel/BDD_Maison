@@ -377,6 +377,82 @@ class SavedView(Base):
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+PRICE_SOURCES = ("manual", "order")
+PURCHASE_STATUSES = ("to_buy", "ordered", "received", "cancelled")
+
+
+class Supplier(Base):
+    """Fournisseur (site marchand, magasin, particulier)."""
+
+    __tablename__ = "suppliers"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(120), unique=True)
+    url: Mapped[str | None] = mapped_column(String(500))
+    notes: Mapped[str | None] = mapped_column(Text)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    archived_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class SupplierOffer(Base):
+    """Référence d'un article chez un fournisseur. Un seul couple (article, fournisseur)."""
+
+    __tablename__ = "supplier_offers"
+    __table_args__ = (UniqueConstraint("article_id", "supplier_id", name="uq_supplier_offers_article_supplier"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    article_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("articles.id", ondelete="RESTRICT"), index=True)
+    supplier_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("suppliers.id", ondelete="RESTRICT"), index=True)
+    supplier_ref: Mapped[str | None] = mapped_column(String(120))
+    url: Mapped[str | None] = mapped_column(String(500))
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PricePoint(Base):
+    """Point de prix observé. Jamais modifié : le prix courant est le plus récent."""
+
+    __tablename__ = "price_points"
+    __table_args__ = (
+        CheckConstraint(_in("source", PRICE_SOURCES), name="ck_price_points_source"),
+        CheckConstraint("unit_price > 0", name="ck_price_points_unit_price_positive"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    offer_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("supplier_offers.id", ondelete="RESTRICT"), index=True)
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 4))
+    currency: Mapped[str] = mapped_column(String(3), default="EUR")
+    observed_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    source: Mapped[str] = mapped_column(String(16))
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+
+
+class PurchaseItem(Base):
+    """Ligne de la liste de courses. N'agit jamais sur le stock : seule la réception crée un objet."""
+
+    __tablename__ = "purchase_items"
+    __table_args__ = (
+        CheckConstraint(_in("status", PURCHASE_STATUSES), name="ck_purchase_items_status"),
+        CheckConstraint("quantity > 0", name="ck_purchase_items_quantity_positive"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    label: Mapped[str] = mapped_column(String(200))
+    article_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("articles.id", ondelete="RESTRICT"), index=True)
+    offer_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("supplier_offers.id", ondelete="RESTRICT"), index=True)
+    quantity: Mapped[Decimal] = mapped_column(Numeric(12, 3))
+    # Prix unitaire indicatif, en euros.
+    unit_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    status: Mapped[str] = mapped_column(String(16), default="to_buy")
+    received_node_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("nodes.id", ondelete="SET NULL"))
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class Plan(Base):
     """Modèle de plan réutilisable (armoire, boîte, tiroir…). Affecté à un contenant, il crée
     les étages et les cases ; le plan du contenant est ensuite une copie indépendante."""

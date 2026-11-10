@@ -1,6 +1,8 @@
 # Lot 2 : fournisseurs, prix et liste de courses (proposition)
 
-Statut : **schéma validé** le 2026-11-10. Les choix de la section 6 sont tranchés ci-dessous. Aucun code n'est encore écrit.
+Statut : **schéma validé et implémenté** (migration `0012_suppliers_purchases`, tests `test_purchases.py`, écrans « Fournisseurs » et « Achats »). Pas encore déployé. Les choix de la section 6 sont tranchés ci-dessous.
+
+Écarts avec la proposition initiale : pas de table `projects` (absente du code), donc pas de `project_id` sur les achats ; l'historique des prix et les offres sont dans l'écran « Achats » plutôt que dans la fiche article.
 
 Décisions retenues (section 6) :
 1. Prix saisis **TTC** (proposition retenue).

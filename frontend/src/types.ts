@@ -277,3 +277,54 @@ export interface PlanModel {
   levels: PlanLevel[];
   version: number;
 }
+
+/** Fournisseur (site marchand, magasin). */
+export interface Supplier {
+  id: string;
+  name: string;
+  url: string | null;
+  notes: string | null;
+  version: number;
+}
+
+/** Référence d'un article chez un fournisseur, avec son dernier prix connu. */
+export interface Offer {
+  id: string;
+  article_id: string;
+  supplier_id: string;
+  supplier_name: string;
+  supplier_ref: string | null;
+  url: string | null;
+  version: number;
+  last_unit_price: string | null;
+  last_currency: string | null;
+  last_observed_at: string | null;
+}
+
+export interface PricePoint {
+  id: string;
+  offer_id: string;
+  unit_price: string;
+  currency: string;
+  observed_at: string;
+  source: "manual" | "order";
+}
+
+export type PurchaseStatus = "to_buy" | "ordered" | "received" | "cancelled";
+
+/** Ligne de la liste de courses. Ne touche au stock qu'à la réception. */
+export interface Purchase {
+  id: string;
+  label: string;
+  article_id: string | null;
+  article_name: string | null;
+  offer_id: string | null;
+  supplier_name: string | null;
+  quantity: string;
+  unit_price: string | null;
+  status: PurchaseStatus;
+  received_node_id: string | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
+}

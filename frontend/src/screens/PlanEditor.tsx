@@ -419,6 +419,7 @@ export default function PlanEditor() {
               setError(null);
             }}
             onError={setError}
+            onOpen={(i) => navigate(`/?n=${cells[i].node_id}`)}
           />
 
           <p className="muted small">

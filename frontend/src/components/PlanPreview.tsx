@@ -63,7 +63,7 @@ export default function PlanPreview({ node, canWrite, onChanged }: { node: NodeD
         )}
       </div>
       {hasPlan && layout ? (
-        <PlanView layout={layout} names={names} />
+        <PlanView layout={layout} names={names} onCellClick={(cellId) => navigate(`/?n=${cellId}`)} />
       ) : (
         canWrite && (
           <>

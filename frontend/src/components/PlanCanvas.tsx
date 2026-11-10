@@ -96,6 +96,7 @@ export default function PlanCanvas<T extends CanvasRect>({
   onChange,
   onDraw,
   onError,
+  onOpen,
 }: {
   W: number;
   H: number;
@@ -110,6 +111,8 @@ export default function PlanCanvas<T extends CanvasRect>({
   onChange: (cells: T[]) => void;
   onDraw: (rect: CanvasRect) => void;
   onError: (message: string) => void;
+  /** Double-clic sur une case : l'ouvre (son contenant). */
+  onOpen?: (index: number) => void;
 }) {
   const surface = useRef<SVGSVGElement>(null);
   const op = useRef<Op | null>(null);
@@ -341,7 +344,12 @@ export default function PlanCanvas<T extends CanvasRect>({
           const bad = preview && preview.index === i && !preview.valid;
           const col = color(i);
           return (
-            <g key={i} className={`plan-cell${isSel ? " plan-selected" : ""}`} style={{ cursor: readOnly ? "default" : "move" }}>
+            <g
+              key={i}
+              className={`plan-cell${isSel ? " plan-selected" : ""}`}
+              style={{ cursor: readOnly ? "default" : "move" }}
+              onDoubleClick={() => onOpen?.(i)}
+            >
               <rect
                 x={p.x}
                 y={p.y}

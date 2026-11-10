@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
+import PhoneActions from "../components/PhoneActions";
 import PlanPreview from "../components/PlanPreview";
 import LabelField from "../components/LabelField";
 import ArticleDetailScreen from "./ArticleDetail";
@@ -500,6 +501,17 @@ function Detail({
             load();
             onChanged();
             if (created) onSelect(created);
+          }}
+        />
+      )}
+
+      {node && !moving && (
+        <PhoneActions
+          node={node}
+          onStartMove={() => onStartMove({ id: node.id, name: node.name ?? node.article_name ?? "élément", version: node.version })}
+          onDone={() => {
+            load();
+            onChanged();
           }}
         />
       )}

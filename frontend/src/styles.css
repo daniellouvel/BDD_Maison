@@ -67,6 +67,25 @@ h2 { font-size: 1.05rem; margin: 0 0 0.5rem; }
 .bottombar a { flex: 1; text-align: center; padding: 0.8rem 0.25rem; color: var(--muted); text-decoration: none; font-size: 0.9rem; }
 .bottombar a.active { color: var(--accent); font-weight: 600; }
 
+/* --- Téléphone : actions d'objet au-dessus de la barre d'onglets, feuilles du bas --- */
+.phone-actions { display: none; }
+.sheet-overlay { position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, 0.35); display: flex; align-items: flex-end; }
+.sheet-panel {
+  width: 100%; max-height: 85vh; overflow-y: auto; background: var(--surface);
+  border-radius: 16px 16px 0 0; padding: 0.6rem 1rem calc(1rem + env(safe-area-inset-bottom));
+}
+.sheet-grip { width: 40px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 0.6rem; }
+.sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; }
+@media (max-width: 899px) {
+  .phone-actions {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem;
+    position: fixed; left: 0; right: 0; bottom: calc(3.6rem + env(safe-area-inset-bottom)); z-index: 4;
+    padding: 0.5rem 0.6rem; background: var(--surface); border-top: 1px solid var(--border);
+  }
+  .phone-actions button { min-height: 48px; font-size: 0.95rem; font-weight: 600; }
+  .content { padding-bottom: 9.5rem; }
+}
+
 .card {
   background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
   padding: 1rem; margin-bottom: 1rem;

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
 import LabelField from "../components/LabelField";
+import ArticleDetailScreen from "./ArticleDetail";
 import { normalizeCode } from "../qr";
 import type { Node, NodeDetail, NodeKind, SearchHit } from "../types";
 
@@ -454,6 +455,13 @@ function Detail({
             if (created) onSelect(created);
           }}
         />
+      )}
+
+      {node.kind === "item" && node.article_id && !moving && (
+        <div className="article-sheet">
+          {/* Fiche complète de l'article : infos, catégorie, champs, photos, documents, liens. */}
+          <ArticleDetailScreen articleId={node.article_id} />
+        </div>
       )}
 
       {canHaveChildren && (

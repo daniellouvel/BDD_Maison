@@ -2,7 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
-import BoxPlan from "../components/BoxPlan";
+import PlanPreview from "../components/PlanPreview";
 import LabelField from "../components/LabelField";
 import ArticleDetailScreen from "./ArticleDetail";
 import { fetchLabel, normalizeCode } from "../qr";
@@ -487,14 +487,7 @@ function Detail({
         </div>
       )}
 
-      {canHaveChildren && <BoxPlan node={node} contents={kids} canWrite={canWrite} onChanged={load} />}
-      {canHaveChildren && canWrite && (
-        <p className="small">
-          <button type="button" className="linklike" onClick={() => navigate(`/plan/${node.id}`)}>
-            Ouvrir l'éditeur de plan en grand (PC)
-          </button>
-        </p>
-      )}
+      {canHaveChildren && <PlanPreview node={node} canWrite={canWrite} />}
       {canHaveChildren && (
         <section className="detail-card">
           <h3>Contenu ({kids.length})</h3>

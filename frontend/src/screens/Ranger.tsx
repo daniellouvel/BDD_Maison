@@ -72,7 +72,6 @@ export default function Ranger() {
     setExisting(null);
     if (ident.name) setName(ident.name);
     if (ident.category_id) setCategoryId(ident.category_id);
-    if (ident.category_id) setCategoryId(ident.category_id);
     setAiApplied(true);
   }
 

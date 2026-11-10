@@ -88,6 +88,13 @@ h2 { font-size: 1.05rem; margin: 0 0 0.5rem; }
   .more-list { display: flex; flex-direction: column; }
   .more-list a { display: block; padding: 0.9rem 0.4rem; border-bottom: 1px solid var(--border); color: inherit; text-decoration: none; font-size: 1rem; min-height: 48px; }
   .more-list a.active { color: var(--accent); font-weight: 600; }
+  .fold-head {
+    width: 100%; min-height: 48px; display: flex; justify-content: space-between; align-items: center;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0 0.9rem;
+    font: inherit; font-weight: 600; color: inherit; margin-bottom: 0.5rem;
+  }
+  .fold > .card { margin-top: 0; }
+  .fold > .card > h2 { display: none; }
 }
 
 .card {

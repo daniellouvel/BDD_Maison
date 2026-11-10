@@ -4,6 +4,7 @@ import { api, ApiError, fileUrl, formatQty, thumbUrl } from "../api";
 import { useAuth } from "../auth";
 import CategoryFields from "../components/CategoryFields";
 import CategoryPicker from "../components/CategoryPicker";
+import Fold from "../components/Fold";
 import { LotActions, STATUS_LABEL } from "../components/LotStatus";
 import MovementForm from "../components/MovementForm";
 import SimilarList from "../components/SimilarList";
@@ -288,6 +289,7 @@ export default function ArticleDetailScreen({ articleId }: { articleId?: string 
       </section>
 
       {show("liens") && (links.length > 0 || edit) && (
+        <Fold title={`Liens (${links.length})`}>
         <section className="card">
           <h2>Liens</h2>
           {links.length === 0 && <p className="muted small">Aucun lien.</p>}
@@ -304,9 +306,11 @@ export default function ArticleDetailScreen({ articleId }: { articleId?: string 
           </ul>
           {edit && <LinkForm onAdd={addLink} />}
         </section>
+        </Fold>
       )}
 
       {show("documents") && (docs.length > 0 || edit) && (
+        <Fold title={`Documents (${docs.length})`}>
         <section className="card">
           <h2>Documents</h2>
           {docs.length === 0 && <p className="muted small">Aucun document.</p>}
@@ -338,6 +342,7 @@ export default function ArticleDetailScreen({ articleId }: { articleId?: string 
             </label>
           )}
         </section>
+        </Fold>
       )}
 
       {error && <p className="error">{error}</p>}
@@ -355,6 +360,7 @@ export default function ArticleDetailScreen({ articleId }: { articleId?: string 
       )}
 
       {show("stock") && (
+        <Fold title={`Stock : ${formatQty(article.total_quantity)}`} defaultOpen>
         <section className="card">
           <h2>Stock total : {formatQty(article.total_quantity)}</h2>
           {article.min_quantity && <p className="muted small">Alerte sous {formatQty(article.min_quantity)}</p>}
@@ -400,13 +406,16 @@ export default function ArticleDetailScreen({ articleId }: { articleId?: string 
             ))}
           </ul>
         </section>
+        </Fold>
       )}
 
       {show("similaires") && similar.length > 0 && (
+        <Fold title={`Objets ressemblants (${similar.length})`}>
         <section className="card">
           <h2>Objets ressemblants</h2>
           <SimilarList hits={similar} />
         </section>
+        </Fold>
       )}
 
       <section className="display-config">

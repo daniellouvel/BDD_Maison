@@ -217,6 +217,9 @@ class Attachment(Base):
     mime: Mapped[str | None] = mapped_column(String(100))
     size: Mapped[int | None] = mapped_column(Integer)
     sha256: Mapped[str | None] = mapped_column(String(64))
+    # Type d'un lien (datasheet, dépôt, notice, fournisseur, autre) ; photo principale d'un propriétaire.
+    link_type: Mapped[str | None] = mapped_column(String(24))
+    is_main: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

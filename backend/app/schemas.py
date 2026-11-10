@@ -238,6 +238,8 @@ class AttachmentOut(_Base):
     url: str | None
     mime: str | None
     size: int | None
+    link_type: str | None = None
+    is_main: bool = False
     created_at: dt.datetime
 
 
@@ -448,3 +450,12 @@ class SavedViewOut(_Base):
     id: uuid.UUID
     name: str
     query: str
+
+
+class AttachmentPatch(BaseModel):
+    """Modification d'une pièce jointe : titre, lien (adresse, type), photo principale."""
+
+    title: str | None = Field(default=None, max_length=200)
+    url: str | None = Field(default=None, max_length=2048)
+    link_type: str | None = Field(default=None, pattern="^(datasheet|depot|notice|fournisseur|autre)$")
+    is_main: bool | None = None

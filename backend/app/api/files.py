@@ -2,13 +2,13 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
 from app.api.deps import CurrentUser, DbSession, Writer
 from app.core.config import get_settings
 from app.core.errors import ApiError, not_found
 from app.models import Attachment
-from app.schemas import AttachmentOut
+from app.schemas import AttachmentOut, AttachmentPatch
 from app.services import ai as ai_service
 from app.services import files as file_service
 
@@ -35,13 +35,15 @@ def upload(
     node_id: Annotated[uuid.UUID | None, Form()] = None,
     title: Annotated[str | None, Form(max_length=200)] = None,
     url: Annotated[str | None, Form(max_length=2048)] = None,
+    link_type: Annotated[str | None, Form(pattern="^(datasheet|depot|notice|fournisseur|autre)$")] = None,
     file: Annotated[UploadFile | None, File()] = None,
 ) -> Attachment:
     if kind == "link":
         if not url:
             raise ApiError(422, "url_required", "Un lien est requis.")
         return file_service.add_link(
-            db, url=url, article_id=article_id, node_id=node_id, title=title, actor=user
+            db, url=url, article_id=article_id, node_id=node_id, title=title, actor=user,
+            link_type=link_type,
         )
     if kind not in FILE_KINDS:
         raise ApiError(422, "invalid_kind", "Type de fichier non pris en charge.")
@@ -58,6 +60,17 @@ def upload(
     return file_service.add_pdf(
         db, kind=kind, raw=raw, article_id=article_id, node_id=node_id, title=title, actor=user
     )
+
+
+@router.patch("/{attachment_id}", response_model=AttachmentOut)
+def patch_attachment(attachment_id: uuid.UUID, body: AttachmentPatch, db: DbSession, user: Writer) -> Attachment:
+    return file_service.update_attachment(db, attachment_id, body, user)
+
+
+@router.delete("/{attachment_id}", status_code=204)
+def delete_attachment(attachment_id: uuid.UUID, db: DbSession, user: Writer) -> Response:
+    file_service.delete_attachment(db, attachment_id, user)
+    return Response(status_code=204)
 
 
 @router.get("", response_model=list[AttachmentOut])

@@ -184,6 +184,10 @@ export interface Attachment {
   title: string | null;
   url: string | null;
   mime: string | null;
+  /** Type d'un lien : datasheet, depot, notice, fournisseur, autre. */
+  link_type?: string | null;
+  /** Photo principale de l'article. */
+  is_main?: boolean;
   created_at: string;
 }
 

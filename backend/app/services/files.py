@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.errors import ApiError
 from app.models import Article, Attachment, Node, User
+from app.schemas import AttachmentPatch
 from app.services.common import audit, get_active
 
 PHOTO_MAX_SIDE = 2048
@@ -98,6 +99,15 @@ def add_photo(
         size=len(photo),
         sha256=hashlib.sha256(photo).hexdigest(),
     )
+    # La première photo d'un propriétaire en est la photo principale.
+    has_main = db.scalar(
+        select(Attachment.id).where(
+            Attachment.kind == "photo",
+            Attachment.is_main.is_(True),
+            Attachment.article_id == article_id if article_id is not None else Attachment.node_id == node_id,
+        )
+    )
+    attachment.is_main = has_main is None
     db.add(attachment)
     db.flush()
     audit(db, "attachment", attachment, actor, "create")
@@ -147,6 +157,7 @@ def add_link(
     node_id: uuid.UUID | None,
     title: str | None,
     actor: User,
+    link_type: str | None = None,
 ) -> Attachment:
     _owner(db, article_id, node_id)
     if not url.startswith(("https://", "http://")):
@@ -157,6 +168,7 @@ def add_link(
         kind="link",
         title=title,
         url=url,
+        link_type=link_type,
     )
     db.add(attachment)
     db.flush()
@@ -169,7 +181,7 @@ def add_link(
 def list_for(
     db: Session, article_id: uuid.UUID | None, node_id: uuid.UUID | None
 ) -> list[Attachment]:
-    stmt = select(Attachment).order_by(Attachment.created_at.desc())
+    stmt = select(Attachment).order_by(Attachment.is_main.desc(), Attachment.created_at.desc())
     if article_id is not None:
         stmt = stmt.where(Attachment.article_id == article_id)
     if node_id is not None:
@@ -181,3 +193,63 @@ def file_path(attachment: Attachment, thumb: bool = False) -> Path | None:
     if thumb:
         return thumbs_dir() / attachment.thumb_key if attachment.thumb_key else None
     return files_dir() / attachment.storage_key if attachment.storage_key else None
+
+
+# --- Modification et suppression d'une pièce jointe ---------------------------------------------
+
+
+def _same_owner(attachment: Attachment):  # type: ignore[no-untyped-def]
+    if attachment.article_id is not None:
+        return Attachment.article_id == attachment.article_id
+    return Attachment.node_id == attachment.node_id
+
+
+def update_attachment(db: Session, attachment_id: uuid.UUID, data: AttachmentPatch, actor: User) -> Attachment:
+    attachment = db.get(Attachment, attachment_id)
+    if attachment is None:
+        raise ApiError(404, "not_found", "Fichier introuvable")
+    fields = data.model_fields_set
+    if "title" in fields:
+        attachment.title = (data.title or "").strip() or None
+    if attachment.kind == "link":
+        if "url" in fields and data.url is not None:
+            if not data.url.startswith(("https://", "http://")):
+                raise ApiError(422, "invalid_url", "Le lien doit commencer par http:// ou https://.")
+            attachment.url = data.url
+        if "link_type" in fields:
+            attachment.link_type = data.link_type
+    if "is_main" in fields and data.is_main is not None:
+        if attachment.kind != "photo":
+            raise ApiError(422, "not_photo", "Seule une photo peut être la photo principale.")
+        if data.is_main:
+            for other in db.scalars(
+                select(Attachment).where(_same_owner(attachment), Attachment.kind == "photo", Attachment.is_main.is_(True))
+            ):
+                other.is_main = False
+        attachment.is_main = data.is_main
+    audit(db, "attachment", attachment, actor, "update")
+    db.commit()
+    db.refresh(attachment)
+    return attachment
+
+
+def delete_attachment(db: Session, attachment_id: uuid.UUID, actor: User) -> None:
+    """Supprime la pièce jointe et ses fichiers. Si c'était la photo principale, la suivante la devient."""
+    attachment = db.get(Attachment, attachment_id)
+    if attachment is None:
+        raise ApiError(404, "not_found", "Fichier introuvable")
+    was_main = attachment.kind == "photo" and attachment.is_main
+    owner_filter = _same_owner(attachment)
+    for path in (file_path(attachment), file_path(attachment, thumb=True)):
+        if path is not None and path.exists():
+            path.unlink()
+    audit(db, "attachment", attachment, actor, "delete")
+    db.delete(attachment)
+    db.flush()
+    if was_main:
+        nxt = db.scalar(
+            select(Attachment).where(owner_filter, Attachment.kind == "photo").order_by(Attachment.created_at)
+        )
+        if nxt is not None:
+            nxt.is_main = True
+    db.commit()

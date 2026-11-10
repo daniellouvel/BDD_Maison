@@ -110,6 +110,10 @@ class OpenAiCompatibleIdentifier:
         try:
             with httpx.Client(timeout=self.timeout, transport=self.transport) as client:
                 response = client.post(f"{self.base_url}/chat/completions", json=body, headers=headers)
+        except httpx.TimeoutException as exc:
+            raise AiUnavailable(
+                "Le service d'identification n'a pas répondu à temps. Essayez un modèle plus rapide."
+            ) from exc
         except httpx.HTTPError as exc:
             raise AiUnavailable("Service d'identification injoignable.") from exc
         if response.status_code == 429:

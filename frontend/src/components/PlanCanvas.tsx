@@ -9,8 +9,8 @@ import { MIN_SIZE, SNAP, attach, clamp, round1, snapAxis } from "./planGeometry"
  * - glisser depuis l'intérieur d'une case la déplace (elle est sélectionnée) ;
  * - glisser une poignée de la case sélectionnée la redimensionne ;
  * - un simple clic sélectionne la case visée.
- * Une case tracée ou déplacée s'arrête au bord de la case voisine qu'elle rencontre (elle est rognée
- * ou calée contre ce bord). Un redimensionnement qui chevauche une autre case reste refusé.
+ * Une case tracée, déplacée ou redimensionnée s'arrête au bord de la case voisine qu'elle rencontre
+ * (elle est rognée ou calée contre ce bord). Les bords communs restent liés.
  */
 
 export type CanvasRect = { x: number; y: number; w: number; h: number };
@@ -135,6 +135,47 @@ function edgeFollowers(orig: CanvasRect, rect: CanvasRect, cells: CanvasRect[], 
     if (changed) out.push({ index: i, x, y, w, h });
   });
   return out;
+}
+
+/**
+ * Redimensionnement : le bord qui avance s'arrête contre la première case qu'il rencontre, sauf les
+ * voisins qui partagent ce bord (ils le suivent, voir edgeFollowers). Ne rogne jamais en dessous de
+ * la taille d'origine sur l'axe déplacé : seul l'excès de croissance est retiré.
+ */
+function clipResize(start: CanvasRect, orig: CanvasRect, handle: string, skip: number, cells: CanvasRect[]): CanvasRect {
+  let rect = start;
+  for (let guard = 0; guard <= cells.length; guard++) {
+    const followers = new Set(edgeFollowers(orig, rect, cells, skip, handle).map((f) => f.index));
+    const blocker = cells.find((c, i) => i !== skip && !followers.has(i) && overlaps(rect, c));
+    if (!blocker) return rect;
+
+    const origRight = orig.x + orig.w;
+    const origBottom = orig.y + orig.h;
+    const right = rect.x + rect.w;
+    const bottom = rect.y + rect.h;
+    const options: { area: number; next: CanvasRect }[] = [];
+    if (handle.includes("e") && right > origRight + EPS && blocker.x >= origRight - EPS) {
+      const next = { ...rect, w: blocker.x - rect.x };
+      options.push({ area: next.w * rect.h, next });
+    }
+    if (handle.includes("w") && rect.x < orig.x - EPS && blocker.x + blocker.w <= orig.x + EPS) {
+      const x = blocker.x + blocker.w;
+      const next = { ...rect, x, w: right - x };
+      options.push({ area: next.w * rect.h, next });
+    }
+    if (handle.startsWith("s") && bottom > origBottom + EPS && blocker.y >= origBottom - EPS) {
+      const next = { ...rect, h: blocker.y - rect.y };
+      options.push({ area: rect.w * next.h, next });
+    }
+    if (handle.startsWith("n") && rect.y < orig.y - EPS && blocker.y + blocker.h <= orig.y + EPS) {
+      const y = blocker.y + blocker.h;
+      const next = { ...rect, y, h: bottom - y };
+      options.push({ area: rect.w * next.h, next });
+    }
+    if (options.length === 0) return rect; // rien à rogner : la validation refusera la position
+    rect = options.sort((p, q) => q.area - p.area)[0].next;
+  }
+  return rect;
 }
 
 export default function PlanCanvas<T extends CanvasRect>({
@@ -306,7 +347,7 @@ export default function PlanCanvas<T extends CanvasRect>({
         if (o.handle.startsWith("n")) top = bottom - MIN_SIZE;
         else bottom = top + MIN_SIZE;
       }
-      const rect = { x: left, y: top, w: right - left, h: bottom - top };
+      const rect = clipResize({ x: left, y: top, w: right - left, h: bottom - top }, o.orig, o.handle, o.index, cells);
       // Les voisins qui partagent le bord déplacé suivent ; chacun doit rester valide.
       const extra = edgeFollowers(o.orig, rect, cells, o.index, o.handle);
       const after = cells.map((c, i) => (i === o.index ? rect : (extra.find((e) => e.index === i) ?? c)));

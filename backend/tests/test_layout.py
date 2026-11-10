@@ -193,3 +193,37 @@ def test_archive_tree_can_remove_remaining_stock(admin_client: TestClient) -> No
     # Le stock sorti reste tracé dans l'historique des mouvements.
     moves = admin_client.get(f"{API}/stock/movements?node_id={item['id']}").json()
     assert any(m["reason"] == "Suppression de l'objet" for m in moves)
+
+
+def test_category_and_fields_can_be_renamed_edited_and_deleted(admin_client: TestClient) -> None:
+    cat = admin_client.post(f"{API}/categories", json={"name": "Résistances"}, headers=CSRF).json()
+    field = admin_client.post(
+        f"{API}/categories/{cat['id']}/fields",
+        json={"key": "valeur", "label": "Valeur", "type": "number", "unit": "Ω"},
+        headers=CSRF,
+    ).json()
+
+    r = admin_client.patch(f"{API}/categories/{cat['id']}", json={"name": "Résistances CMS"}, headers=CSRF)
+    assert r.status_code == 200 and r.json()["name"] == "Résistances CMS"
+
+    r = admin_client.patch(
+        f"{API}/categories/{cat['id']}/fields/{field['id']}", json={"label": "Valeur (ohms)", "required": True}, headers=CSRF
+    )
+    assert r.status_code == 200 and r.json()["label"] == "Valeur (ohms)" and r.json()["required"] is True
+
+    # Un article rattaché empêche la suppression de la catégorie.
+    admin_client.post(f"{API}/articles", json={"name": "10k", "category_id": cat["id"], "attributes": {"valeur": 10000}}, headers=CSRF)
+    blocked = admin_client.delete(f"{API}/categories/{cat['id']}", headers=CSRF)
+    assert blocked.status_code == 409 and blocked.json()["code"] == "category_in_use"
+
+    assert admin_client.delete(f"{API}/categories/{cat['id']}/fields/{field['id']}", headers=CSRF).status_code == 204
+    assert admin_client.get(f"{API}/categories/{cat['id']}/fields").json() == []
+
+
+def test_empty_category_can_be_deleted_but_not_a_parent(admin_client: TestClient) -> None:
+    parent = admin_client.post(f"{API}/categories", json={"name": "Électronique"}, headers=CSRF).json()
+    child = admin_client.post(f"{API}/categories", json={"name": "Capteurs", "parent_id": parent["id"]}, headers=CSRF).json()
+    refused = admin_client.delete(f"{API}/categories/{parent['id']}", headers=CSRF)
+    assert refused.status_code == 409 and refused.json()["code"] == "category_not_empty"
+    assert admin_client.delete(f"{API}/categories/{child['id']}", headers=CSRF).status_code == 204
+    assert admin_client.delete(f"{API}/categories/{parent['id']}", headers=CSRF).status_code == 204

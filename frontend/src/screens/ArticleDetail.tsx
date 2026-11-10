@@ -552,6 +552,13 @@ function ArticleEdit({
   const [description, setDescription] = useState(article.description ?? "");
   const [keywords, setKeywords] = useState(article.keywords ?? "");
   const [minQuantity, setMinQuantity] = useState(article.min_quantity ?? "");
+  const [attributes, setAttributes] = useState<Record<string, string | number | boolean>>(article.attributes ?? {});
+  const [catFields, setCatFields] = useState<FieldDef[]>([]);
+
+  // Champs de la catégorie choisie (hérités des catégories parentes).
+  useEffect(() => {
+    inheritedFields(categories, categoryId || null).then(setCatFields).catch(() => setCatFields([]));
+  }, [categories, categoryId]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -565,6 +572,7 @@ function ArticleEdit({
         description: description || null,
         keywords: keywords || null,
         min_quantity: minQuantity || null,
+        attributes,
       });
       onSaved();
     } catch (err) {
@@ -609,6 +617,44 @@ function ArticleEdit({
         Alerte stock faible sous
         <input type="number" step="any" min="0" value={minQuantity} onChange={(e) => setMinQuantity(e.target.value)} />
       </label>
+      {catFields.map((f) => (
+        <label key={f.key}>
+          {f.label}
+          {f.unit ? ` (${f.unit})` : ""}
+          {f.required ? " *" : ""}
+          {f.type === "enum" ? (
+            <select
+              value={String(attributes[f.key] ?? "")}
+              onChange={(e) => setAttributes({ ...attributes, [f.key]: e.target.value })}
+              required={f.required}
+            >
+              <option value="">—</option>
+              {f.options?.map((o) => (
+                <option key={o}>{o}</option>
+              ))}
+            </select>
+          ) : f.type === "bool" ? (
+            <input
+              type="checkbox"
+              checked={Boolean(attributes[f.key])}
+              onChange={(e) => setAttributes({ ...attributes, [f.key]: e.target.checked })}
+            />
+          ) : (
+            <input
+              type={f.type === "number" ? "number" : "text"}
+              step="any"
+              required={f.required}
+              value={String(attributes[f.key] ?? "")}
+              onChange={(e) =>
+                setAttributes({
+                  ...attributes,
+                  [f.key]: f.type === "number" && e.target.value !== "" ? Number(e.target.value) : e.target.value,
+                })
+              }
+            />
+          )}
+        </label>
+      ))}
     </form>
   );
 }

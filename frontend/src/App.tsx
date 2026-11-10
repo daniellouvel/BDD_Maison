@@ -3,6 +3,7 @@ import { NavLink, Route, Routes } from "react-router-dom";
 import { api, ApiError } from "./api";
 import { AuthContext, type AuthState } from "./auth";
 import Home from "./screens/Home";
+import Categories from "./screens/Categories";
 import LabelDetail from "./screens/LabelDetail";
 import Login from "./screens/Login";
 import QrManager from "./screens/QrManager";
@@ -97,6 +98,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/ranger" element={<Ranger />} />
+          <Route path="/categories" element={<Categories />} />
           <Route path="/scan" element={<Scan />} />
           <Route path="/reglages" element={<Settings />} />
           <Route path="/qr" element={<QrManager />} />
@@ -114,6 +116,7 @@ export default function App() {
         </NavLink>
         <NavLink to="/ranger">Ranger</NavLink>
         <NavLink to="/scan">Scanner</NavLink>
+        <NavLink to="/categories">Catégories</NavLink>
         <NavLink to="/qr">Étiquettes QR</NavLink>
         <NavLink to="/reglages">Réglages</NavLink>
       </nav>
@@ -123,6 +126,7 @@ export default function App() {
         </NavLink>
         <NavLink to="/ranger">Ranger</NavLink>
         <NavLink to="/scan">Scanner</NavLink>
+        <NavLink to="/categories">Catégories</NavLink>
         <NavLink to="/qr">Étiquettes</NavLink>
         <NavLink to="/reglages">Réglages</NavLink>
       </nav>

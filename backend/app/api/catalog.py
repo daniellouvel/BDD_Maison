@@ -12,8 +12,10 @@ from app.schemas import (
     ArticleOut,
     ArticlePatch,
     CategoryIn,
+    CategoryPatch,
     CategoryOut,
     FieldDefIn,
+    FieldDefPatch,
     FieldDefOut,
     NodeTypeIn,
     NodeTypeOut,
@@ -44,6 +46,30 @@ def list_fields(category_id: uuid.UUID, db: DbSession, _: CurrentUser) -> list[F
 @router.post("/categories/{category_id}/fields", response_model=FieldDefOut, status_code=201)
 def add_field(category_id: uuid.UUID, body: FieldDefIn, db: DbSession, user: Writer) -> FieldDef:
     return catalog.add_field(db, category_id, body, user)
+
+
+@router.patch("/categories/{category_id}", response_model=CategoryOut)
+def patch_category(category_id: uuid.UUID, body: CategoryPatch, db: DbSession, user: Writer) -> Category:
+    return catalog.update_category(db, category_id, body, user)
+
+
+@router.delete("/categories/{category_id}", status_code=204)
+def delete_category(category_id: uuid.UUID, db: DbSession, user: Writer) -> Response:
+    catalog.delete_category(db, category_id, user)
+    return Response(status_code=204)
+
+
+@router.patch("/categories/{category_id}/fields/{field_id}", response_model=FieldDefOut)
+def patch_field(
+    category_id: uuid.UUID, field_id: uuid.UUID, body: FieldDefPatch, db: DbSession, user: Writer
+) -> FieldDef:
+    return catalog.update_field(db, category_id, field_id, body, user)
+
+
+@router.delete("/categories/{category_id}/fields/{field_id}", status_code=204)
+def delete_field(category_id: uuid.UUID, field_id: uuid.UUID, db: DbSession, user: Writer) -> Response:
+    catalog.delete_field(db, category_id, field_id, user)
+    return Response(status_code=204)
 
 
 @router.get("/node-types", response_model=list[NodeTypeOut])

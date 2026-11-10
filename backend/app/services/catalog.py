@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from app.core.errors import ApiError, conflict_version
 from app.models import Article, Category, FieldDef, Node, NodeType, User, utcnow
 from app.schemas import (
+    CategoryPatch,
+    FieldDefPatch,
     ArticleDetail,
     ArticleIn,
     ArticleOut,
@@ -281,4 +283,67 @@ def archive_article(db: Session, article: Article, actor: User) -> None:
     article.archived_at = utcnow()
     article.version += 1
     audit(db, "article", article, actor, "archive", before=before)
+    db.commit()
+
+
+def update_category(db: Session, category_id: uuid.UUID, data: CategoryPatch, actor: User) -> Category:
+    category = get_active_category(db, category_id)
+    before = snapshot(category)
+    category.name = data.name.strip()
+    audit(db, "category", category, actor, "update", before=before)
+    db.commit()
+    db.refresh(category)
+    return category
+
+
+def delete_category(db: Session, category_id: uuid.UUID, actor: User) -> None:
+    """Supprime une catégorie (et ses champs) si elle n'a ni sous-catégorie ni article."""
+    category = get_active_category(db, category_id)
+    if db.scalar(select(func.count()).select_from(Category).where(Category.parent_id == category_id)):
+        raise ApiError(409, "category_not_empty", "Cette catégorie a des sous-catégories : supprimez-les d'abord.")
+    if db.scalar(
+        select(func.count()).select_from(Article).where(Article.category_id == category_id, Article.archived_at.is_(None))
+    ):
+        raise ApiError(409, "category_in_use", "Des articles utilisent cette catégorie : changez-les d'abord.")
+    audit(db, "category", category, actor, "delete")
+    db.delete(category)
+    db.commit()
+
+
+def _get_field(db: Session, category_id: uuid.UUID, field_id: uuid.UUID) -> FieldDef:
+    field = db.get(FieldDef, field_id)
+    if field is None or field.category_id != category_id:
+        raise ApiError(404, "not_found", "Champ introuvable")
+    return field
+
+
+def update_field(db: Session, category_id: uuid.UUID, field_id: uuid.UUID, data: FieldDefPatch, actor: User) -> FieldDef:
+    field = _get_field(db, category_id, field_id)
+    before = snapshot(field)
+    fields = data.model_fields_set
+    if "label" in fields and data.label is not None:
+        field.label = data.label.strip()
+    if "unit" in fields:
+        if data.unit and field.type != "number":
+            raise ApiError(422, "invalid_unit", "L'unité ne concerne que les champs numériques.")
+        field.unit = data.unit or None
+    if "options" in fields:
+        if field.type != "enum":
+            raise ApiError(422, "invalid_options", "Les options ne concernent que les champs de type liste.")
+        if not data.options:
+            raise ApiError(422, "options_required", "Un champ de type liste nécessite des options.")
+        field.options = data.options
+    if "required" in fields and data.required is not None:
+        field.required = data.required
+    audit(db, "field_def", field, actor, "update", before=before)
+    db.commit()
+    db.refresh(field)
+    return field
+
+
+def delete_field(db: Session, category_id: uuid.UUID, field_id: uuid.UUID, actor: User) -> None:
+    """Supprime un champ. Les valeurs déjà saisies restent dans les articles mais ne sont plus affichées."""
+    field = _get_field(db, category_id, field_id)
+    audit(db, "field_def", field, actor, "delete")
+    db.delete(field)
     db.commit()

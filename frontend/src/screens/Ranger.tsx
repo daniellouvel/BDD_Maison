@@ -5,7 +5,8 @@ import LabelField from "../components/LabelField";
 import LocationPicker from "../components/LocationPicker";
 import PhotoAnalysis from "../components/PhotoAnalysis";
 import { normalizeCode } from "../qr";
-import type { Analysis, Article, Identification, NodeDetail } from "../types";
+import { categoryLabel } from "../fields";
+import type { Analysis, Article, Category, Identification, NodeDetail } from "../types";
 
 /**
  * Étape 3 : rangement rapide. On choisit où (scan, code ou liste), puis quoi (nom ou photo reconnue),
@@ -21,6 +22,8 @@ export default function Ranger() {
 
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("1");
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryId, setCategoryId] = useState("");
   const [unit, setUnit] = useState("");
   const [labelCode, setLabelCode] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
@@ -35,6 +38,10 @@ export default function Ranger() {
 
   // Arrivée depuis « Ranger ici » : l'emplacement est déjà connu.
   const to = params.get("to");
+  useEffect(() => {
+    api.get<Category[]>("/categories").then(setCategories).catch(() => setCategories([]));
+  }, []);
+
   useEffect(() => {
     if (!to) return;
     api.get<NodeDetail>(`/nodes/${to}`).then(setDest).catch(() => setDest(null));
@@ -55,12 +62,16 @@ export default function Ranger() {
   function applyIdentification(ident: Identification) {
     setExisting(null);
     if (ident.name) setName(ident.name);
+    if (ident.category_id) setCategoryId(ident.category_id);
+    if (ident.category_id) setCategoryId(ident.category_id);
     setAiApplied(true);
   }
 
   function resetItem() {
     setName("");
     setQuantity("1");
+    setCategoryId("");
+    setCategoryId("");
     setUnit("");
     setLabelCode("");
     setPhoto(null);
@@ -78,7 +89,7 @@ export default function Ranger() {
     setError(null);
     try {
       let article = existing;
-      if (!article) article = await api.post<Article>("/articles", { name: name.trim() });
+      if (!article) article = await api.post<Article>("/articles", { name: name.trim(), category_id: categoryId || null });
       const item = await api.post<{ id: string }>("/nodes", {
         kind: "item",
         parent_id: dest?.id ?? null,
@@ -196,6 +207,16 @@ export default function Ranger() {
           <input type="number" min="0" step="any" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Quantité" />
           <input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="Unité (pcs, g…)" />
         </div>
+        {!existing && (
+          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+            <option value="">Catégorie (facultatif)</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {categoryLabel(categories, c.id)}
+              </option>
+            ))}
+          </select>
+        )}
         <LabelField value={labelCode} onChange={setLabelCode} />
 
         {error && <p className="error small">{error}</p>}

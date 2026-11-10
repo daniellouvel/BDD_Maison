@@ -459,3 +459,16 @@ class AttachmentPatch(BaseModel):
     url: str | None = Field(default=None, max_length=2048)
     link_type: str | None = Field(default=None, pattern="^(datasheet|depot|notice|fournisseur|autre)$")
     is_main: bool | None = None
+
+
+class CategoryPatch(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+
+
+class FieldDefPatch(BaseModel):
+    """Modification d'un champ : libellé, unité, options, obligatoire. La clé et le type sont figés."""
+
+    label: str | None = Field(default=None, min_length=1, max_length=120)
+    unit: str | None = Field(default=None, max_length=16)
+    options: list[str] | None = None
+    required: bool | None = None

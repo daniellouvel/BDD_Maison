@@ -4,12 +4,12 @@ import { api, ApiError } from "../api";
 import type { NodeDetail, PlanModel } from "../types";
 import PlanView, { loadPlanNames } from "./PlanView";
 
-/** Préférence d'affichage du plan, gardée dans le navigateur (affiché par défaut). */
-const VISIBLE_KEY = "mw-plan-visible";
+/** Préférence d'affichage du plan, par contenant, gardée dans le navigateur (affiché par défaut). */
+const visibleKey = (nodeId: string) => `mw-plan-visible:${nodeId}`;
 
-function readVisible(): boolean {
+function readVisible(nodeId: string): boolean {
   try {
-    return localStorage.getItem(VISIBLE_KEY) !== "0";
+    return localStorage.getItem(visibleKey(nodeId)) !== "0";
   } catch {
     return true;
   }
@@ -23,7 +23,7 @@ export default function PlanPreview({ node, canWrite, onChanged }: { node: NodeD
   const navigate = useNavigate();
   const layout = node.layout && Array.isArray(node.layout.levels) ? node.layout : null;
   const hasPlan = layout !== null && layout.levels.length > 0;
-  const [visible, setVisible] = useState<boolean>(readVisible);
+  const [visible, setVisible] = useState<boolean>(() => readVisible(node.id));
   const [names, setNames] = useState<Record<string, string>>({});
   const [models, setModels] = useState<PlanModel[]>([]);
   const [chosen, setChosen] = useState("");
@@ -33,7 +33,7 @@ export default function PlanPreview({ node, canWrite, onChanged }: { node: NodeD
   function toggle(value: boolean) {
     setVisible(value);
     try {
-      localStorage.setItem(VISIBLE_KEY, value ? "1" : "0");
+      localStorage.setItem(visibleKey(node.id), value ? "1" : "0");
     } catch {
       // Préférence non enregistrée (navigation privée, stockage bloqué) : sans gravité.
     }

@@ -487,7 +487,7 @@ function Detail({
         </div>
       )}
 
-      {canHaveChildren && <PlanPreview node={node} canWrite={canWrite} onChanged={load} />}
+      {canHaveChildren && <PlanPreview key={node.id} node={node} canWrite={canWrite} onChanged={load} />}
       {canHaveChildren && (
         <section className="detail-card">
           <h3>Contenu ({kids.length})</h3>

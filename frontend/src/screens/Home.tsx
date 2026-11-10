@@ -308,15 +308,19 @@ function Detail({
 
   const [node, setNode] = useState<NodeDetail | null>(null);
   const [kids, setKids] = useState<Node[]>([]);
+  const [kidNames, setKidNames] = useState<Names>({});
   const [panel, setPanel] = useState<Panel>("none");
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setError(null);
     Promise.all([api.get<NodeDetail>(`/nodes/${id}`), api.get<Node[]>(`/nodes?parent_id=${id}`)])
-      .then(([d, k]) => {
+      .then(async ([d, k]) => {
         setNode(d);
         setKids(k);
+        // Un objet porte le nom de son article : on le charge pour l'afficher dans la liste.
+        const found = await articleNames(k, {});
+        setKidNames((prev) => ({ ...prev, ...found }));
       })
       .catch((e) => setError(e instanceof ApiError ? e.message : "Chargement impossible."));
   }, [id]);
@@ -460,7 +464,7 @@ function Detail({
             {kids.map((k) => (
               <li key={k.id}>
                 <button type="button" className="linklike" onClick={() => onSelect(k.id)}>
-                  {ICON[k.kind]} {k.name ?? "Objet"}
+                  {ICON[k.kind]} {k.name ?? (k.article_id ? kidNames[k.article_id] : null) ?? "Objet"}
                 </button>
                 {k.kind === "item" && k.quantity && <span className="muted small"> × {formatQty(k.quantity, k.unit)}</span>}
               </li>

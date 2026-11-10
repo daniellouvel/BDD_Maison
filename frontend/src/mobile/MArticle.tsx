@@ -1,15 +1,16 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
 import LocationPicker from "../components/LocationPicker";
 import { LotActions } from "../components/LotStatus";
 import ArticleDetailScreen from "../screens/ArticleDetail";
 import type { ArticleDetail, LocationRef, NodeDetail } from "../types";
+import { LabelSheet } from "./MNode";
 import { MHeader, Segmented, Sheet } from "./ui";
 
 type Tab = "stock" | "fiche";
-type SheetName = "take" | "lend" | "move" | null;
+type SheetName = "take" | "lend" | "move" | "label" | null;
 
 /**
  * Fiche d'un objet sur téléphone. L'essentiel tient sur un écran : le stock total, les lots avec
@@ -25,6 +26,9 @@ export default function MArticle() {
   const [selected, setSelected] = useState<string | null>(params.get("lot"));
   const [sheet, setSheet] = useState<SheetName>(null);
   const [busy, setBusy] = useState(false);
+  const navigate = useNavigate();
+  // Code de l'étiquette du lot choisi (null : aucune). Chargé à part : la liste des lots ne le donne pas.
+  const [labelCode, setLabelCode] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -42,6 +46,17 @@ export default function MArticle() {
 
   const lots = article?.locations ?? [];
   const lot: LocationRef | null = lots.find((l) => l.node_id === selected) ?? lots[0] ?? null;
+
+  const lotId = lot?.node_id ?? null;
+  const loadLabel = useCallback(() => {
+    setLabelCode(null);
+    if (!lotId) return;
+    api
+      .get<NodeDetail>(`/nodes/${lotId}`)
+      .then((n) => setLabelCode(n.qr_code))
+      .catch(() => setLabelCode(null));
+  }, [lotId]);
+  useEffect(loadLabel, [loadLabel]);
 
   /** Un appui sur − ou + : mouvement d'une unité, sans formulaire. */
   async function step(target: LocationRef, kind: "in" | "out") {
@@ -128,6 +143,22 @@ export default function MArticle() {
         {article && tab === "fiche" && <ArticleDetailScreen articleId={article.id} />}
       </div>
 
+      {lot && tab === "stock" && (
+        <div className="m-actions m-label-line">
+          {labelCode ? (
+            <button type="button" className="secondary" onClick={() => navigate(`/qr/labels/${labelCode}`)}>
+              🏷️ Étiquette {labelCode}
+            </button>
+          ) : canWrite ? (
+            <button type="button" className="secondary" onClick={() => setSheet("label")}>
+              🏷️ Associer une étiquette QR à ce lot
+            </button>
+          ) : (
+            <span className="muted small">Pas d'étiquette QR</span>
+          )}
+        </div>
+      )}
+
       {canWrite && lot && tab === "stock" && (
         <div className="m-actions">
           <button type="button" disabled={lot.status !== "in_stock"} onClick={() => setSheet("take")}>
@@ -149,6 +180,16 @@ export default function MArticle() {
         </Sheet>
       )}
       {sheet === "move" && lot && <MoveLotSheet lot={lot} onClose={() => setSheet(null)} onDone={done} />}
+      {sheet === "label" && lot && (
+        <LabelSheet
+          node={{ id: lot.node_id }}
+          onClose={() => setSheet(null)}
+          onDone={() => {
+            setSheet(null);
+            loadLabel();
+          }}
+        />
+      )}
     </div>
   );
 }

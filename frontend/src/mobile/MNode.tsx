@@ -333,7 +333,8 @@ function MoveSheet({ node, onClose, onDone }: { node: NodeDetail; onClose: () =>
   );
 }
 
-function LabelSheet({ node, onClose, onDone }: { node: NodeDetail; onClose: () => void; onDone: () => void }) {
+/** Scan (ou saisie) d'une étiquette libre pour l'associer à un élément : lieu, contenant ou lot d'objet. */
+export function LabelSheet({ node, onClose, onDone }: { node: { id: string }; onClose: () => void; onDone: () => void }) {
   const [error, setError] = useState<string | null>(null);
 
   async function onCode(raw: string) {

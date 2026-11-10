@@ -41,6 +41,9 @@
 .m-actions { flex: none; display: flex; gap: 0.4rem; padding: 0.5rem 0.6rem; background: var(--surface); border-top: 1px solid var(--border); }
 .m-actions > * { flex: 1; min-height: 48px; padding: 0 0.4rem; font-size: 0.95rem; }
 
+.m-label-line { border-top: 0; padding-bottom: 0; background: transparent; }
+.m-label-line > * { min-height: 44px; font-size: 0.9rem; }
+
 /* Lignes de liste : grandes cibles tactiles */
 .m-list { list-style: none; margin: 0; padding: 0; background: var(--surface); }
 .m-row {

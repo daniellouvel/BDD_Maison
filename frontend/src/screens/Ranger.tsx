@@ -2,12 +2,13 @@ import { FormEvent, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import LabelField from "../components/LabelField";
+import Scanner from "../components/Scanner";
 import CategoryFields, { type AttrValue } from "../components/CategoryFields";
 import CategoryPicker from "../components/CategoryPicker";
 import LocationPicker from "../components/LocationPicker";
 import PhotoAnalysis from "../components/PhotoAnalysis";
 import { inheritedFields, nameWithValue } from "../fields";
-import { normalizeCode } from "../qr";
+import { fetchLabel, normalizeCode } from "../qr";
 import type { Analysis, Article, Category, FieldDef, Identification, NodeDetail } from "../types";
 
 /**
@@ -155,6 +156,8 @@ export default function Ranger() {
         <LocationPicker value={dest} onChange={setDest} emptyLabel="aucun (à ranger plus tard)" />
       </section>
 
+
+      <ExistingItem dest={dest} onDone={() => {}} />
       <form className="card form" onSubmit={submit}>
         <h2>2. Quoi ?</h2>
         <label className="filebutton">
@@ -258,5 +261,92 @@ export default function Ranger() {
         </section>
       )}
     </div>
+  );
+}
+
+/**
+ * Objet déjà existant : on scanne son étiquette. S'il n'a pas de place, on le range à l'emplacement
+ * choisi ; s'il est déjà rangé, on le déplace vers cet emplacement (après confirmation).
+ */
+function ExistingItem({ dest, onDone }: { dest: NodeDetail | null; onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [item, setItem] = useState<NodeDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function onCode(text: string) {
+    setError(null);
+    setMessage(null);
+    const code = normalizeCode(text);
+    if (!code) return setError("Ce n'est pas une étiquette QR.");
+    try {
+      const label = await fetchLabel(code);
+      if (label.status !== "assigned" || !label.node) {
+        return setError(`${code} n'est affectée à aucun élément. Pour un nouvel objet, remplissez le formulaire ci-dessous.`);
+      }
+      if (label.node.kind !== "item") {
+        return setError("Ce code est celui d'un emplacement ou d'un contenant : utilisez « Ranger en série » ou « Déplacer ».");
+      }
+      setItem(label.node);
+      setOpen(false);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Lecture impossible.");
+    }
+  }
+
+  async function place() {
+    if (!item || !dest) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.patch(`/nodes/${item.id}`, { version: item.version, parent_id: dest.id });
+      setMessage(`« ${item.name ?? item.article_name} » ${item.parent_id ? "déplacé" : "rangé"} dans ${dest.name ?? dest.article_name}.`);
+      setItem(null);
+      onDone();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Rangement impossible.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const where = item ? (item.breadcrumb.length > 1 ? item.breadcrumb.slice(0, -1).map((b) => b.name).join(" › ") : "à ranger (sans emplacement)") : "";
+
+  return (
+    <section className="card">
+      <h2>Objet déjà existant ?</h2>
+      {!item && (
+        <>
+          <button type="button" className="secondary" onClick={() => setOpen(!open)}>
+            {open ? "Fermer le scan" : "Scanner l'étiquette de l'objet"}
+          </button>
+          {open && <Scanner onCode={onCode} hint="Scannez l'étiquette de l'objet" />}
+        </>
+      )}
+      {item && (
+        <div>
+          <p>
+            <strong>{item.name ?? item.article_name}</strong>
+            {item.quantity && <span className="muted"> × {formatQty(item.quantity, item.unit)}</span>}
+          </p>
+          <p className="muted small">Actuellement : {where}</p>
+          {dest ? (
+            <div className="row">
+              <button type="button" disabled={busy} onClick={place}>
+                {item.breadcrumb.length > 1 ? "Déplacer" : "Ranger"} dans « {dest.name ?? dest.article_name} »
+              </button>
+              <button type="button" className="secondary" onClick={() => setItem(null)}>
+                Annuler
+              </button>
+            </div>
+          ) : (
+            <p className="muted small">Choisissez d'abord l'emplacement dans « 1. Où ? ».</p>
+          )}
+        </div>
+      )}
+      {message && <p className="muted small">{message}</p>}
+      {error && <p className="error small">{error}</p>}
+    </section>
   );
 }

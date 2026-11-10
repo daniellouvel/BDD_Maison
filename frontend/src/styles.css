@@ -207,6 +207,40 @@ label.checkbox input { width: auto; }
 .plan .plan-cell:hover rect { fill: rgba(59, 130, 246, 0.35); }
 .plan .plan-cell text { fill: currentColor; font-family: inherit; pointer-events: none; }
 .plan-editing { cursor: crosshair; }
+
+/* Éditeur de plan dédié (PC) */
+.plan-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.8rem; margin-bottom: 0.8rem; }
+.plan-head h1 { margin: 0; }
+.plan-screen { display: grid; gap: 1rem; }
+.plan-screen { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 820px) {
+  .content:has(> .plan-page) { max-width: none; margin-right: 1rem; }
+  .plan-screen { grid-template-columns: 210px minmax(0, 1fr); align-items: start; }
+  .plan-side { grid-column: 1 / -1; }
+}
+@media (min-width: 1200px) {
+  .plan-screen { grid-template-columns: 210px minmax(0, 1fr) 280px; }
+  .plan-side { grid-column: auto; }
+}
+.plan-main { min-width: 0; }
+.plan-toolbar { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: flex-end; margin-bottom: 0.6rem; }
+.plan-toolbar label { display: grid; gap: 0.2rem; }
+.plan-toolbar input { width: 7rem; }
+.plan-svg { display: block; width: 100%; height: auto; touch-action: none; user-select: none; cursor: crosshair; }
+.plan-svg .plan-cell { cursor: pointer; }
+.plan-svg .plan-cell text { fill: currentColor; font-family: inherit; pointer-events: none; }
+.plan-svg .plan-draft { fill: rgba(59, 130, 246, 0.25); stroke: #3b82f6; stroke-dasharray: 4 3; pointer-events: none; }
+.plan-add input, .plan-main input, .plan-side input, .plan-side select { width: 100%; box-sizing: border-box; min-width: 0; }
+.plan-toolbar input { width: 7rem; }
+.plan-level-list { display: grid; gap: 0.35rem; margin-bottom: 0.6rem; }
+.plan-level { display: flex; justify-content: space-between; align-items: center; text-align: left; }
+.plan-level-on { outline: 2px solid #3b82f6; }
+.plan-add { display: grid; gap: 0.4rem; margin: 0.6rem 0; }
+.plan-empty { border: 2px dashed #888; border-radius: 8px; padding: 2rem; min-height: 260px; }
+.plan-legend { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.5rem; }
+.plan-chip { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; }
+.plan-chip i { width: 0.8rem; height: 0.8rem; border-radius: 3px; display: inline-block; }
+.plan-dims { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
 .plan-editing .plan-cell { pointer-events: none; }
 .plan .plan-cell.plan-hit rect { fill: rgba(249, 115, 22, 0.45); stroke: #f97316; stroke-width: 2; }
 .plan .plan-draft { fill: rgba(59, 130, 246, 0.25); stroke: #3b82f6; stroke-width: 1; stroke-dasharray: 4 3; }

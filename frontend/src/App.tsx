@@ -7,6 +7,7 @@ import Categories from "./screens/Categories";
 import LabelDetail from "./screens/LabelDetail";
 import Login from "./screens/Login";
 import QrManager from "./screens/QrManager";
+import PlanEditor from "./screens/PlanEditor";
 import Ranger from "./screens/Ranger";
 import Scan from "./screens/Scan";
 import Settings from "./screens/Settings";
@@ -98,6 +99,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/ranger" element={<Ranger />} />
+          <Route path="/plan/:id" element={<PlanEditor />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/scan" element={<Scan />} />
           <Route path="/reglages" element={<Settings />} />

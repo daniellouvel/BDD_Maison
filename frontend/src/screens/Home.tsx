@@ -488,6 +488,13 @@ function Detail({
       )}
 
       {canHaveChildren && <BoxPlan node={node} contents={kids} canWrite={canWrite} onChanged={load} />}
+      {canHaveChildren && canWrite && (
+        <p className="small">
+          <button type="button" className="linklike" onClick={() => navigate(`/plan/${node.id}`)}>
+            Ouvrir l'éditeur de plan en grand (PC)
+          </button>
+        </p>
+      )}
       {canHaveChildren && (
         <section className="detail-card">
           <h3>Contenu ({kids.length})</h3>

@@ -52,6 +52,16 @@ export default function PlanEditor() {
   const [error, setError] = useState<string | null>(null);
   const surface = useRef<SVGSVGElement>(null);
   const origin = useRef<{ x: number; y: number } | null>(null);
+  // Case en cours de déplacement : position de départ et case d'origine.
+  // Dernière position calculée, lue au relâchement (l'état React peut être en retard sur un glissé rapide).
+  const dragCell = useRef<{
+    id: string;
+    start: { x: number; y: number };
+    orig: BoxCell;
+    moved: boolean;
+    result: { x: number; y: number; valid: boolean } | null;
+  } | null>(null);
+  const [moving, setMoving] = useState<{ id: string; x: number; y: number; w: number; h: number; valid: boolean } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -252,19 +262,38 @@ export default function PlanEditor() {
    * Point sous le curseur, en mm. Il s'accroche aux bords des murs et des cases de l'étage affiché
    * (à 10 px près), sinon à la grille de 5 mm.
    */
-  function toMm(e: PointerEvent<SVGSVGElement>) {
+  /** Point sous le curseur en mm, sans accrochage, avec la tolérance de 10 px en mm. */
+  function pointMm(e: PointerEvent<SVGSVGElement>) {
     const r = surface.current!.getBoundingClientRect();
     const sx = (W + 2 * M) / r.width;
     const sy = (H + 2 * M) / r.height;
-    const rawX = clamp((e.clientX - r.left) * sx - M, W);
-    const rawY = clamp((e.clientY - r.top) * sy - M, H);
+    return { x: (e.clientX - r.left) * sx - M, y: (e.clientY - r.top) * sy - M, tolX: sx * 10, tolY: sy * 10 };
+  }
+
+  function toMm(e: PointerEvent<SVGSVGElement>) {
+    const p = pointMm(e);
+    const rawX = clamp(p.x, W);
+    const rawY = clamp(p.y, H);
     const xs = [0, W];
     const ys = [0, H];
     for (const c of level?.cells ?? []) {
       xs.push(c.x, c.x + c.w);
       ys.push(c.y, c.y + c.h);
     }
-    return { x: attach(rawX, xs, sx * 10), y: attach(rawY, ys, sy * 10) };
+    return { x: attach(rawX, xs, p.tolX), y: attach(rawY, ys, p.tolY) };
+  }
+
+  /**
+   * Position d'une case sur un axe : s'accroche aux murs et aux bords des autres cases (alignement
+   * ou contact), à 10 px près, sinon à la grille de 5 mm. Reste dans le plan.
+   */
+  function snapAxis(v: number, size: number, max: number, edges: number[], tol: number) {
+    const candidates = [0, max - size];
+    for (const edge of edges) candidates.push(edge, edge - size);
+    let best = candidates[0];
+    for (const c of candidates) if (Math.abs(c - v) < Math.abs(best - v)) best = c;
+    const value = Math.abs(best - v) <= tol ? best : snap(v);
+    return Math.min(Math.max(0, value), max - size);
   }
 
   function attach(v: number, candidates: number[], tolerance: number) {
@@ -276,7 +305,13 @@ export default function PlanEditor() {
   function onDown(e: PointerEvent<SVGSVGElement>) {
     const cell = (e.target as Element).closest?.("[data-cell]");
     if (cell) {
-      setSelected(cell.getAttribute("data-cell"));
+      const id = cell.getAttribute("data-cell") ?? "";
+      setSelected(id);
+      const orig = level?.cells.find((c) => c.node_id === id);
+      if (canWrite && !busy && orig) {
+        dragCell.current = { id, start: pointMm(e), orig, moved: false, result: null };
+        e.currentTarget.setPointerCapture(e.pointerId);
+      }
       return;
     }
     setSelected(null);
@@ -287,6 +322,22 @@ export default function PlanEditor() {
   }
 
   function onMove(e: PointerEvent<SVGSVGElement>) {
+    const dc = dragCell.current;
+    if (dc && level) {
+      const p = pointMm(e);
+      const dx = p.x - dc.start.x;
+      const dy = p.y - dc.start.y;
+      if (!dc.moved && Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+      dc.moved = true;
+      const others = level.cells.filter((c) => c.node_id !== dc.id);
+      const { w, h } = dc.orig;
+      const x = snapAxis(dc.orig.x + dx, w, W, others.flatMap((c) => [c.x, c.x + c.w]), p.tolX);
+      const y = snapAxis(dc.orig.y + dy, h, H, others.flatMap((c) => [c.y, c.y + c.h]), p.tolY);
+      const overlaps = others.some((c) => x < c.x + c.w && c.x < x + w && y < c.y + c.h && c.y < y + h);
+      dc.result = { x, y, valid: !overlaps };
+      setMoving({ id: dc.id, x, y, w, h, valid: !overlaps });
+      return;
+    }
     const o = origin.current;
     if (!o) return;
     const p = toMm(e);
@@ -294,6 +345,21 @@ export default function PlanEditor() {
   }
 
   function onUp() {
+    const dc = dragCell.current;
+    if (dc) {
+      dragCell.current = null;
+      setMoving(null);
+      const m = dc.result;
+      if (!dc.moved || !m || !level) return;
+      if (!m.valid) return setError("Cette case ne peut pas aller là : elle chevauche une autre case.");
+      if (m.x === dc.orig.x && m.y === dc.orig.y) return;
+      const levelId = level.node_id;
+      void run(
+        () => save(withCells(levelId, (cells) => cells.map((c) => (c.node_id === dc.id ? { ...c, x: m.x, y: m.y } : c)))),
+        "Déplacement impossible.",
+      );
+      return;
+    }
     const rect = draft;
     origin.current = null;
     setDraft(null);
@@ -447,21 +513,31 @@ export default function PlanEditor() {
 
               {level.cells.map((c) => {
                 const isSel = selected === c.node_id;
+                const movingHere = moving && moving.id === c.node_id ? moving : null;
+                const isMoving = movingHere !== null;
+                // Pendant un déplacement, la case est dessinée à sa position provisoire.
+                const p = movingHere ?? c;
                 const color = colorOf(nodes[c.node_id]?.node_type_id ?? null);
+                const stroke = movingHere && !movingHere.valid ? "#ef4444" : color;
                 return (
-                  <g key={c.node_id} data-cell={c.node_id} className={`plan-cell${isSel ? " plan-selected" : ""}`}>
+                  <g
+                    key={c.node_id}
+                    data-cell={c.node_id}
+                    className={`plan-cell${isSel ? " plan-selected" : ""}`}
+                    style={{ cursor: canWrite ? "move" : "pointer" }}
+                  >
                     <rect
-                      x={c.x}
-                      y={c.y}
-                      width={c.w}
-                      height={c.h}
-                      style={{ fill: color, fillOpacity: isSel ? 0.45 : 0.22, stroke: color, strokeWidth: unit * (isSel ? 2 : 1) }}
+                      x={p.x}
+                      y={p.y}
+                      width={p.w}
+                      height={p.h}
+                      style={{ fill: color, fillOpacity: isSel || isMoving ? 0.45 : 0.22, stroke, strokeWidth: unit * (isSel || isMoving ? 2 : 1) }}
                     />
-                    <text x={c.x + c.w / 2} y={c.y + c.h / 2} fontSize={fontSize} textAnchor="middle" dominantBaseline="middle">
+                    <text x={p.x + p.w / 2} y={p.y + p.h / 2} fontSize={fontSize} textAnchor="middle" dominantBaseline="middle">
                       {nameOf(c.node_id)}
                     </text>
-                    <text x={c.x + c.w / 2} y={c.y + c.h - unit * 2} fontSize={fontSize * 0.7} textAnchor="middle" opacity={0.7}>
-                      {c.w} × {c.h}
+                    <text x={p.x + p.w / 2} y={p.y + p.h - unit * 2} fontSize={fontSize * 0.7} textAnchor="middle" opacity={0.7}>
+                      {p.w} × {p.h}
                     </text>
                   </g>
                 );

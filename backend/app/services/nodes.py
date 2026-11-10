@@ -340,19 +340,34 @@ def _subtree(db: Session, node: Node) -> list[Node]:
     return result
 
 
-def archive_tree(db: Session, node: Node, actor: User) -> int:
-    """Archive un élément avec tout ce qu'il contient. Refusé si un objet a encore du stock."""
+def archive_tree(db: Session, node: Node, actor: User, remove_stock: bool = False) -> int:
+    """Archive un élément avec tout ce qu'il contient.
+
+    Refusé si un objet a encore du stock, sauf `remove_stock` : le stock est alors sorti (mouvement
+    « Suppression de l'objet », qui garde l'historique) avant l'archivage.
+    """
     if node.archived_at is not None:
         raise ApiError(404, "not_found", "Élément introuvable")
     tree = _subtree(db, node)
-    blocked = [label(db, n) for n in tree if n.kind == "item" and n.quantity and n.quantity > 0]
-    if blocked:
-        names = ", ".join(blocked[:10]) + (" …" if len(blocked) > 10 else "")
+    stocked = [n for n in tree if n.kind == "item" and n.quantity and n.quantity > 0]
+    if stocked and not remove_stock:
+        names = ", ".join(label(db, n) for n in stocked[:10]) + (" …" if len(stocked) > 10 else "")
         raise ApiError(
             409,
             "stock_remaining",
-            f"Ces objets ont encore du stock, sortez-les d'abord : {names}",
+            f"Ces objets ont encore du stock : {names}",
         )
+    if stocked:
+        from app.schemas import MovementIn
+        from app.services import stock
+
+        for item in stocked:
+            stock.apply(
+                db,
+                MovementIn(node_id=item.id, kind="out", delta=item.quantity, reason="Suppression de l'objet"),
+                actor,
+            )
+            db.refresh(item)
     now = utcnow()
     for current in tree:
         before = snapshot(current)

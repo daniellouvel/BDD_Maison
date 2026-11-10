@@ -179,3 +179,17 @@ def test_search_ignores_case_and_accents(admin_client: TestClient) -> None:
     for q in ("resistance", "RÉSISTANCE", "résistance", "10 k"):
         r = admin_client.get(f"{API}/articles?q={q}")
         assert r.status_code == 200 and len(r.json()) == 1, q
+
+
+def test_archive_tree_can_remove_remaining_stock(admin_client: TestClient) -> None:
+    article = admin_client.post(f"{API}/articles", json={"name": "ESP32"}, headers=CSRF).json()
+    item = _node(admin_client, kind="item", article_id=article["id"], quantity="2")
+    refused = admin_client.post(f"{API}/nodes/{item['id']}/archive-tree", headers=CSRF)
+    assert refused.status_code == 409 and refused.json()["code"] == "stock_remaining"
+
+    done = admin_client.post(f"{API}/nodes/{item['id']}/archive-tree?remove_stock=true", headers=CSRF)
+    assert done.status_code == 200 and done.json() == {"archived": 1}
+    assert admin_client.get(f"{API}/nodes/{item['id']}").status_code == 404
+    # Le stock sorti reste tracé dans l'historique des mouvements.
+    moves = admin_client.get(f"{API}/stock/movements?node_id={item['id']}").json()
+    assert any(m["reason"] == "Suppression de l'objet" for m in moves)

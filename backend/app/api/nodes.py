@@ -55,12 +55,17 @@ def set_layout(node_id: uuid.UUID, body: LayoutIn, db: DbSession, user: Writer) 
 
 
 @router.post("/{node_id}/archive-tree")
-def archive_node_tree(node_id: uuid.UUID, db: DbSession, user: Writer) -> dict[str, int]:
-    """Archive l'élément et tout son contenu (étages, cases, objets sans stock)."""
+def archive_node_tree(
+    node_id: uuid.UUID,
+    db: DbSession,
+    user: Writer,
+    remove_stock: bool = Query(default=False, description="Sortir aussi le stock restant avant d'archiver"),
+) -> dict[str, int]:
+    """Archive l'élément et tout son contenu. Refusé s'il reste du stock, sauf `remove_stock`."""
     node = db.get(Node, node_id)
     if node is None or node.archived_at is not None:
         raise not_found("Élément")
-    return {"archived": node_service.archive_tree(db, node, user)}
+    return {"archived": node_service.archive_tree(db, node, user, remove_stock)}
 
 
 @router.delete("/{node_id}", status_code=204)

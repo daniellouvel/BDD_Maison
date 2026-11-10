@@ -334,15 +334,33 @@ function Detail({
 
   async function remove() {
     if (!node) return;
+    const label = node.name ?? node.article_name ?? "cet élément";
     const warning =
-      "Tout ce qui est dedans sera supprimé (étages, cases, contenants, objets sans stock).\n" +
+      "Tout ce qui est dedans sera supprimé (étages, cases, contenants, objets).\n" +
       "Rien n'est effacé définitivement, mais ces éléments ne figureront plus dans l'inventaire.";
-    if (!window.confirm(`Supprimer « ${node.name ?? node.article_name ?? "cet élément"} » ?\n\n${warning}`)) return;
-    try {
-      await api.post(`/nodes/${node.id}/archive-tree`, {});
+    if (!window.confirm(`Supprimer « ${label} » ?\n\n${warning}`)) return;
+    const done = () => {
       onChanged();
       onSelect(node.parent_id ?? "");
+    };
+    try {
+      await api.post(`/nodes/${node.id}/archive-tree`, {});
+      done();
     } catch (e) {
+      if (e instanceof ApiError && e.code === "stock_remaining") {
+        // Il reste du stock : on propose de le retirer avec l'élément (l'historique en garde la trace).
+        const again = window.confirm(
+          `${e.message}\n\nSupprimer aussi ce stock ? Il sera sorti du stock (mouvement « Suppression de l'objet »).`,
+        );
+        if (!again) return;
+        try {
+          await api.post(`/nodes/${node.id}/archive-tree?remove_stock=true`, {});
+          done();
+        } catch (e2) {
+          setError(e2 instanceof ApiError ? e2.message : "Suppression impossible.");
+        }
+        return;
+      }
       setError(e instanceof ApiError ? e.message : "Suppression impossible.");
     }
   }

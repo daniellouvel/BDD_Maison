@@ -2,10 +2,11 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, ApiError, fileUrl, formatQty, thumbUrl } from "../api";
 import { useAuth } from "../auth";
+import CategoryFields from "../components/CategoryFields";
 import CategoryPicker from "../components/CategoryPicker";
 import MovementForm from "../components/MovementForm";
 import SimilarList from "../components/SimilarList";
-import { categoryLabel, inheritedFields } from "../fields";
+import { categoryLabel, inheritedFields, nameWithValue } from "../fields";
 import type { ArticleDetail, Attachment, Category, FieldDef, SimilarHit } from "../types";
 
 const LINK_TYPES = [
@@ -566,7 +567,7 @@ function ArticleEdit({
     try {
       await api.patch(`/articles/${article.id}`, {
         version: article.version,
-        name,
+        name: nameWithValue(name, catFields, attributes),
         category_id: categoryId || null,
         brand: brand || null,
         mpn: mpn || null,
@@ -611,44 +612,7 @@ function ArticleEdit({
         Alerte stock faible sous
         <input type="number" step="any" min="0" value={minQuantity} onChange={(e) => setMinQuantity(e.target.value)} />
       </label>
-      {catFields.map((f) => (
-        <label key={f.key}>
-          {f.label}
-          {f.unit ? ` (${f.unit})` : ""}
-          {f.required ? " *" : ""}
-          {f.type === "enum" ? (
-            <select
-              value={String(attributes[f.key] ?? "")}
-              onChange={(e) => setAttributes({ ...attributes, [f.key]: e.target.value })}
-              required={f.required}
-            >
-              <option value="">—</option>
-              {f.options?.map((o) => (
-                <option key={o}>{o}</option>
-              ))}
-            </select>
-          ) : f.type === "bool" ? (
-            <input
-              type="checkbox"
-              checked={Boolean(attributes[f.key])}
-              onChange={(e) => setAttributes({ ...attributes, [f.key]: e.target.checked })}
-            />
-          ) : (
-            <input
-              type={f.type === "number" ? "number" : "text"}
-              step="any"
-              required={f.required}
-              value={String(attributes[f.key] ?? "")}
-              onChange={(e) =>
-                setAttributes({
-                  ...attributes,
-                  [f.key]: f.type === "number" && e.target.value !== "" ? Number(e.target.value) : e.target.value,
-                })
-              }
-            />
-          )}
-        </label>
-      ))}
+      <CategoryFields fields={catFields} values={attributes} onChange={setAttributes} />
     </form>
   );
 }

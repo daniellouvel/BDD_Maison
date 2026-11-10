@@ -2,11 +2,13 @@ import { FormEvent, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import LabelField from "../components/LabelField";
+import CategoryFields, { type AttrValue } from "../components/CategoryFields";
 import CategoryPicker from "../components/CategoryPicker";
 import LocationPicker from "../components/LocationPicker";
 import PhotoAnalysis from "../components/PhotoAnalysis";
+import { inheritedFields, nameWithValue } from "../fields";
 import { normalizeCode } from "../qr";
-import type { Analysis, Article, Category, Identification, NodeDetail } from "../types";
+import type { Analysis, Article, Category, FieldDef, Identification, NodeDetail } from "../types";
 
 /**
  * Étape 3 : rangement rapide. On choisit où (scan, code ou liste), puis quoi (nom ou photo reconnue),
@@ -24,6 +26,8 @@ export default function Ranger() {
   const [quantity, setQuantity] = useState("1");
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState("");
+  const [catFields, setCatFields] = useState<FieldDef[]>([]);
+  const [attributes, setAttributes] = useState<Record<string, AttrValue>>({});
   const [unit, setUnit] = useState("");
   const [labelCode, setLabelCode] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
@@ -38,6 +42,10 @@ export default function Ranger() {
 
   // Arrivée depuis « Ranger ici » : l'emplacement est déjà connu.
   const to = params.get("to");
+  useEffect(() => {
+    inheritedFields(categories, categoryId || null).then(setCatFields).catch(() => setCatFields([]));
+  }, [categories, categoryId]);
+
   useEffect(() => {
     api.get<Category[]>("/categories").then(setCategories).catch(() => setCategories([]));
   }, []);
@@ -71,7 +79,7 @@ export default function Ranger() {
     setName("");
     setQuantity("1");
     setCategoryId("");
-    setCategoryId("");
+    setAttributes({});
     setUnit("");
     setLabelCode("");
     setPhoto(null);
@@ -89,7 +97,13 @@ export default function Ranger() {
     setError(null);
     try {
       let article = existing;
-      if (!article) article = await api.post<Article>("/articles", { name: name.trim(), category_id: categoryId || null });
+      if (!article) {
+        article = await api.post<Article>("/articles", {
+          name: nameWithValue(name.trim(), catFields, attributes),
+          category_id: categoryId || null,
+          attributes,
+        });
+      }
       const item = await api.post<{ id: string }>("/nodes", {
         kind: "item",
         parent_id: dest?.id ?? null,
@@ -208,7 +222,17 @@ export default function Ranger() {
           <input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="Unité (pcs, g…)" />
         </div>
         {!existing && (
-          <CategoryPicker categories={categories} value={categoryId} onChange={setCategoryId} />
+          <>
+            <CategoryPicker
+              categories={categories}
+              value={categoryId}
+              onChange={(id) => {
+                setCategoryId(id);
+                setAttributes({});
+              }}
+            />
+            <CategoryFields fields={catFields} values={attributes} onChange={setAttributes} />
+          </>
         )}
         <LabelField value={labelCode} onChange={setLabelCode} />
 

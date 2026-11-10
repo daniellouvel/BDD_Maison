@@ -19,6 +19,8 @@ from app.services.nodes import assign_slug
 def _checked_levels(data: PlanIn) -> list[dict]:
     """Vérifie que les cases tiennent dans le plan et ne se chevauchent pas, par étage."""
     levels: list[dict] = []
+    if sum(1 for level in data.levels if level.base) > 1:
+        raise ApiError(422, "invalid_plan", "Le plan ne peut avoir qu'un bloc sans étage.")
     for level in data.levels:
         cells: list[dict] = []
         for cell in level.cells:
@@ -41,7 +43,7 @@ def _checked_levels(data: PlanIn) -> list[dict]:
                     "h": cell.h,
                 }
             )
-        levels.append({"name": (level.name or "").strip() or None, "cells": cells})
+        levels.append({"name": None if level.base else (level.name or "").strip() or None, "cells": cells, "base": level.base})
     return levels
 
 
@@ -130,14 +132,18 @@ def apply_plan(db: Session, plan: Plan, box: Node, box_version: int, actor: User
     before = snapshot(box)
     levels_out: list[dict] = []
     for index, level in enumerate(plan.levels, start=1):
-        level_node = _container(db, box, level.get("name") or f"Étage {index}", actor)
+        if level.get("base"):
+            owner, level_ref = box, None
+        else:
+            level_node = _container(db, box, level.get("name") or f"Étage {index}", actor)
+            owner, level_ref = level_node, str(level_node.id)
         cells_out: list[dict] = []
         for n, cell in enumerate(level["cells"], start=1):
-            cell_node = _container(db, level_node, cell.get("name") or f"Case {n}", actor)
+            cell_node = _container(db, owner, cell.get("name") or f"Case {n}", actor)
             cells_out.append(
                 {"node_id": str(cell_node.id), "x": cell["x"], "y": cell["y"], "w": cell["w"], "h": cell["h"]}
             )
-        levels_out.append({"node_id": str(level_node.id), "cells": cells_out})
+        levels_out.append({"node_id": level_ref, "cells": cells_out})
 
     box.layout = {"width_mm": plan.width_mm, "height_mm": plan.height_mm, "levels": levels_out}
     box.version += 1

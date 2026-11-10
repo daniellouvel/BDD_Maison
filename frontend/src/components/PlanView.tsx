@@ -8,6 +8,7 @@ export async function loadPlanNames(box: string, layout: BoxLayout): Promise<Rec
   const levels = await api.get<Node[]>(`/nodes?parent_id=${box}`).catch(() => [] as Node[]);
   for (const k of levels) if (k.name) names[k.id] = k.name;
   for (const l of layout.levels) {
+    if (l.node_id === null) continue; // bloc sans étage : ses cases sont déjà listées par la boîte
     const cells = await api.get<Node[]>(`/nodes?parent_id=${l.node_id}`).catch(() => [] as Node[]);
     for (const k of cells) if (k.name) names[k.id] = k.name;
   }
@@ -44,8 +45,8 @@ export default function PlanView({
       {levels.length > 1 && (
         <div className="tabs">
           {levels.map((l, i) => (
-            <button key={l.node_id} type="button" className={i === active ? "" : "secondary"} onClick={() => setActive(i)}>
-              {names[l.node_id] ?? "Étage"}
+            <button key={l.node_id ?? "base"} type="button" className={i === active ? "" : "secondary"} onClick={() => setActive(i)}>
+              {l.node_id === null ? "Dans la boîte" : (names[l.node_id] ?? "Étage")}
             </button>
           ))}
         </div>

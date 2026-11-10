@@ -48,7 +48,7 @@ export default function BoxPlan({
   const origin = useRef<{ x: number; y: number } | null>(null);
 
   const level = levels[Math.min(active, levels.length - 1)] ?? null;
-  const levelName = (id: string) => contents.find((c) => c.id === id)?.name ?? "Étage";
+  const levelName = (id: string | null) => (id === null ? "Dans la boîte" : (contents.find((c) => c.id === id)?.name ?? "Étage"));
 
   // Noms des cases : ce sont les enfants de chaque étage.
   const key = JSON.stringify(levels);

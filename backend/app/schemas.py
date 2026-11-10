@@ -189,9 +189,12 @@ class LayoutCellIn(BaseModel):
 
 
 class LayoutLevelIn(BaseModel):
-    """Étage d'une boîte : élément enfant de la boîte, avec ses cases."""
+    """Étage d'une boîte : élément enfant de la boîte, avec ses cases.
 
-    node_id: uuid.UUID
+    node_id absent (null) = bloc sans étage : les cases sont directement dans la boîte.
+    """
+
+    node_id: uuid.UUID | None = None
     cells: list[LayoutCellIn] = Field(default_factory=list, max_length=500)
 
 
@@ -488,8 +491,11 @@ class PlanCellIn(BaseModel):
 
 
 class PlanLevelIn(BaseModel):
+    """Étage d'un modèle. base = true : bloc sans étage (cases directement dans le contenant)."""
+
     name: str | None = Field(default=None, max_length=200)
     cells: list[PlanCellIn] = Field(default_factory=list, max_length=500)
+    base: bool = False
 
 
 class PlanIn(BaseModel):

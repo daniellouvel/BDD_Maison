@@ -229,6 +229,7 @@ label.checkbox input { width: auto; }
 .plan-svg { display: block; width: 100%; height: auto; touch-action: none; user-select: none; cursor: crosshair; }
 .plan-svg .plan-cell { cursor: pointer; }
 .plan-svg .plan-cell text { fill: currentColor; font-family: inherit; pointer-events: none; }
+.plan-svg .plan-handle { fill: #fff; stroke: #3b82f6; }
 .plan-svg .plan-draft { fill: rgba(59, 130, 246, 0.25); stroke: #3b82f6; stroke-dasharray: 4 3; pointer-events: none; }
 .plan-add input, .plan-main input, .plan-side input, .plan-side select { width: 100%; box-sizing: border-box; min-width: 0; }
 .plan-toolbar input { width: 7rem; }

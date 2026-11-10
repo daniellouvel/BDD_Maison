@@ -90,8 +90,9 @@ export interface BoxCell {
   h: number;
 }
 
+/** Étage d'une boîte. node_id = null : bloc sans étage, les cases sont directement dans la boîte. */
 export interface BoxLevel {
-  node_id: string;
+  node_id: string | null;
   cells: BoxCell[];
 }
 
@@ -263,6 +264,8 @@ export interface PlanCell {
 export interface PlanLevel {
   name: string | null;
   cells: PlanCell[];
+  /** true : bloc sans étage, les cases sont directement dans le contenant. */
+  base?: boolean;
 }
 
 /** Modèle de plan réutilisable (armoire, boîte, tiroir) : affecté à un contenant, il en copie la grille. */

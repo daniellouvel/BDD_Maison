@@ -251,15 +251,26 @@ def set_layout(db: Session, node: Node, data: LayoutIn, actor: User) -> Node:
     levels: list[dict] = []
     seen_levels: set[uuid.UUID] = set()
     seen_cells: set[uuid.UUID] = set()
+    base_seen = False
     for level_in in data.levels:
-        if level_in.node_id in seen_levels:
-            raise ApiError(422, "duplicate_level", "Un étage apparaît deux fois dans le plan.")
-        seen_levels.add(level_in.node_id)
-        level = db.get(Node, level_in.node_id)
-        if level is None or level.archived_at is not None or level.parent_id != node.id:
-            raise ApiError(422, "invalid_level", "Chaque étage doit être un élément de la boîte.")
-        if level.kind != "container":
-            raise ApiError(422, "invalid_level", "Un étage doit être un contenant.")
+        if level_in.node_id is None:
+            # Bloc sans étage : les cases sont directement dans la boîte.
+            if base_seen:
+                raise ApiError(422, "duplicate_level", "Le plan ne peut avoir qu'un bloc sans étage.")
+            base_seen = True
+            owner_id = node.id
+            level_ref = None
+        else:
+            if level_in.node_id in seen_levels:
+                raise ApiError(422, "duplicate_level", "Un étage apparaît deux fois dans le plan.")
+            seen_levels.add(level_in.node_id)
+            level = db.get(Node, level_in.node_id)
+            if level is None or level.archived_at is not None or level.parent_id != node.id:
+                raise ApiError(422, "invalid_level", "Chaque étage doit être un élément de la boîte.")
+            if level.kind != "container":
+                raise ApiError(422, "invalid_level", "Un étage doit être un contenant.")
+            owner_id = level.id
+            level_ref = str(level.id)
 
         cells: list[dict] = []
         for cell in level_in.cells:
@@ -267,16 +278,24 @@ def set_layout(db: Session, node: Node, data: LayoutIn, actor: User) -> Node:
                 raise ApiError(422, "duplicate_cell", "Une case apparaît deux fois dans le plan.")
             seen_cells.add(cell.node_id)
             child = db.get(Node, cell.node_id)
-            if child is None or child.archived_at is not None or child.parent_id != level.id:
-                raise ApiError(422, "invalid_cell", "Chaque case doit être un élément de son étage.")
+            if child is None or child.archived_at is not None or child.parent_id != owner_id:
+                raise ApiError(422, "invalid_cell", "Chaque case doit être un élément de son étage ou de la boîte.")
             if child.kind != "container":
                 raise ApiError(422, "invalid_cell", "Une case doit être un contenant.")
             if cell.x + cell.w > data.width_mm + 0.01 or cell.y + cell.h > data.height_mm + 0.01:
                 raise ApiError(422, "invalid_cell", "Une case dépasse les dimensions de la boîte.")
+            for other in cells:
+                if (
+                    cell.x < other["x"] + other["w"]
+                    and other["x"] < cell.x + cell.w
+                    and cell.y < other["y"] + other["h"]
+                    and other["y"] < cell.y + cell.h
+                ):
+                    raise ApiError(422, "cells_overlap", "Deux cases d'un même étage se chevauchent.")
             cells.append(
                 {"node_id": str(cell.node_id), "x": cell.x, "y": cell.y, "w": cell.w, "h": cell.h}
             )
-        levels.append({"node_id": str(level_in.node_id), "cells": cells})
+        levels.append({"node_id": level_ref, "cells": cells})
 
     before = snapshot(node)
     node.layout = {"width_mm": data.width_mm, "height_mm": data.height_mm, "levels": levels}

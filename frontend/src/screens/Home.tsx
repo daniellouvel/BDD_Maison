@@ -37,23 +37,23 @@ export default function Home() {
           {user.username} · <button type="button" className="linklike" onClick={logout}>Se déconnecter</button>
         </span>
       </div>
-      {moving && (
-        <MoveBanner
-          moving={moving}
-          onCancel={() => setMoving(null)}
-          onMoved={(movedId) => {
-            setMoving(null);
-            changed();
-            select(movedId);
-          }}
-        />
-      )}
       <div className="explorer-body">
         <aside className="explorer-tree card">
           {canWrite && (
             <button type="button" className="root-add" onClick={() => setRootAdd(!rootAdd)}>
               {rootAdd ? "Fermer" : "+ Ajouter à la racine"}
             </button>
+          )}
+          {moving && (
+            <MoveBanner
+              moving={moving}
+              onCancel={() => setMoving(null)}
+              onMoved={(movedId) => {
+                setMoving(null);
+                changed();
+                select(movedId);
+              }}
+            />
           )}
           {rootAdd && (
             <AddPanel
@@ -702,7 +702,7 @@ function MoveBanner({
   }
 
   return (
-    <div className="move-banner">
+    <div className="move-inline">
       <p>
         Déplacer « {moving.name} » : cliquez la destination dans l'arbre, puis « Déplacer ici », ou{" "}
         <button type="button" className="linklike" onClick={() => setScanning(!scanning)}>

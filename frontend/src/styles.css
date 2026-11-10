@@ -290,3 +290,7 @@ label.checkbox input { width: auto; }
 .display-config .checkbox input { width: 1.1rem; height: 1.1rem; min-height: auto; }
 
 .save-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+/* Déplacement : bloc compact dans la colonne de l'arbre (sans bandeau jaune) */
+.move-inline { border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.7rem; margin-bottom: 0.6rem; background: #fff; }
+.move-inline p { margin: 0 0 0.4rem; font-size: 0.9rem; }

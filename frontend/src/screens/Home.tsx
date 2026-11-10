@@ -703,13 +703,14 @@ function MoveBanner({
 
   return (
     <div className="move-inline">
-      <p>
-        Déplacer « {moving.name} » : cliquez la destination dans l'arbre, puis « Déplacer ici », ou{" "}
-        <button type="button" className="linklike" onClick={() => setScanning(!scanning)}>
-          {scanning ? "fermer le scan" : "scanner la destination"}
+      <div className="row">
+        <button type="button" onClick={() => setScanning(!scanning)}>
+          {scanning ? "Fermer le scan" : "Scanner"}
         </button>
-        . <button type="button" className="linklike" onClick={onCancel}>Annuler</button>
-      </p>
+        <button type="button" className="secondary" onClick={onCancel} aria-label="Annuler le déplacement">
+          ✕
+        </button>
+      </div>
       {scanning && <Scanner onCode={onCode} hint={busy ? "Déplacement…" : "Scannez l'étiquette de la destination"} />}
       {error && <p className="error small">{error}</p>}
     </div>

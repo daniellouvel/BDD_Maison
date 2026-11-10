@@ -9,7 +9,8 @@ import { MIN_SIZE, SNAP, attach, clamp, round1, snapAxis } from "./planGeometry"
  * - glisser depuis l'intérieur d'une case la déplace (elle est sélectionnée) ;
  * - glisser une poignée de la case sélectionnée la redimensionne ;
  * - un simple clic sélectionne la case visée.
- * Toute position qui chevauche une autre case ou sort du plan est refusée.
+ * Une case tracée ou déplacée s'arrête au bord de la case voisine qu'elle rencontre (elle est rognée
+ * ou calée contre ce bord). Un redimensionnement qui chevauche une autre case reste refusé.
  */
 
 export type CanvasRect = { x: number; y: number; w: number; h: number };
@@ -28,6 +29,59 @@ const HANDLE_CURSOR: Record<Handle, string> = {
 };
 
 const overlaps = (a: CanvasRect, b: CanvasRect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+/**
+ * Tracé d'une case entre deux coins : si elle rencontre une case voisine, on la rogne contre le bord
+ * de celle-ci, du côté où l'on trace (on garde l'option qui laisse la plus grande surface).
+ * Renvoie null si le point de départ est à l'intérieur d'une case : rien ne peut être tracé.
+ */
+function clipDraw(anchor: { x: number; y: number }, corner: { x: number; y: number }, cells: CanvasRect[]): CanvasRect | null {
+  let bx = corner.x;
+  let by = corner.y;
+  const rectOf = (): CanvasRect => ({
+    x: Math.min(anchor.x, bx),
+    y: Math.min(anchor.y, by),
+    w: Math.abs(bx - anchor.x),
+    h: Math.abs(by - anchor.y),
+  });
+  for (let guard = 0; guard <= cells.length; guard++) {
+    const r = rectOf();
+    const hit = cells.find((c) => overlaps(r, c));
+    if (!hit) return r;
+    const options: { area: number; apply: () => void }[] = [];
+    if (anchor.x <= hit.x) options.push({ area: (hit.x - anchor.x) * r.h, apply: () => (bx = hit.x) });
+    else if (anchor.x >= hit.x + hit.w) options.push({ area: (anchor.x - hit.x - hit.w) * r.h, apply: () => (bx = hit.x + hit.w) });
+    if (anchor.y <= hit.y) options.push({ area: (hit.y - anchor.y) * r.w, apply: () => (by = hit.y) });
+    else if (anchor.y >= hit.y + hit.h) options.push({ area: (anchor.y - hit.y - hit.h) * r.w, apply: () => (by = hit.y + hit.h) });
+    if (options.length === 0) return null;
+    options.sort((p, q) => q.area - p.area)[0].apply();
+  }
+  return null;
+}
+
+/**
+ * Déplacement d'une case sur un axe : elle avance vers la cible et s'arrête au premier bord voisin
+ * rencontré sur sa voie (un voisin qui se trouve dans la même bande sur l'autre axe).
+ */
+function slide(rect: CanvasRect, axis: "x" | "y", target: number, cells: CanvasRect[]): number {
+  const pos = rect[axis];
+  const size = axis === "x" ? rect.w : rect.h;
+  if (Math.abs(target - pos) < EPS) return pos;
+  const forward = target > pos;
+  let limit = target;
+  for (const c of cells) {
+    const sameLane =
+      axis === "x"
+        ? c.y < rect.y + rect.h - EPS && rect.y < c.y + c.h - EPS
+        : c.x < rect.x + rect.w - EPS && rect.x < c.x + c.w - EPS;
+    if (!sameLane) continue;
+    const cPos = c[axis];
+    const cSize = axis === "x" ? c.w : c.h;
+    if (forward && cPos >= pos + size - EPS) limit = Math.min(limit, cPos - size);
+    if (!forward && cPos + cSize <= pos + EPS) limit = Math.max(limit, cPos + cSize);
+  }
+  return limit;
+}
 
 type Op =
   | { kind: "move"; index: number; start: { x: number; y: number }; orig: CanvasRect; moved: boolean; result: Result | null }
@@ -214,8 +268,12 @@ export default function PlanCanvas<T extends CanvasRect>({
       o.moved = true;
       const others = cells.filter((_, i) => i !== o.index);
       const { w, h } = o.orig;
-      const x = snapAxis(o.orig.x + dx, w, W, others.flatMap((c) => [c.x, c.x + c.w]), p.tolX);
-      const y = snapAxis(o.orig.y + dy, h, H, others.flatMap((c) => [c.y, c.y + c.h]), p.tolY);
+      const tx = snapAxis(o.orig.x + dx, w, W, others.flatMap((c) => [c.x, c.x + c.w]), p.tolX);
+      const ty = snapAxis(o.orig.y + dy, h, H, others.flatMap((c) => [c.y, c.y + c.h]), p.tolY);
+      // Sur chaque axe, la case s'arrête contre le bord voisin au lieu d'être refusée.
+      const start = { x: o.orig.x, y: o.orig.y, w, h };
+      const x = slide(start, "x", tx, others);
+      const y = slide({ ...start, x }, "y", ty, others);
       const valid = !others.some((c) => overlaps({ x, y, w, h }, c));
       o.result = { x, y, w, h, valid, extra: [] };
       setPreview({ index: o.index, ...o.result });
@@ -270,7 +328,8 @@ export default function PlanCanvas<T extends CanvasRect>({
     const dy = Math.abs(now.y - o.start.y);
     if (!o.moved && dx < 1 && dy < 1) return;
     o.moved = true;
-    o.rect = { x: Math.min(o.start.x, now.x), y: Math.min(o.start.y, now.y), w: dx, h: dy };
+    // La case est rognée contre les voisines rencontrées (voir clipDraw).
+    o.rect = clipDraw(o.start, now, cells) ?? { x: Math.min(o.start.x, now.x), y: Math.min(o.start.y, now.y), w: dx, h: dy };
     setDrawing(o.rect);
   }
 

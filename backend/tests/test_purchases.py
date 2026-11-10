@@ -189,3 +189,25 @@ def test_supplier_with_open_purchase_cannot_be_archived(admin_client: TestClient
 
     r = admin_client.delete(f"{API}/suppliers/{supplier['id']}", headers=CSRF)
     assert r.status_code == 409 and r.json()["code"] == "supplier_in_use"
+
+
+def test_archived_supplier_can_be_restored(admin_client: TestClient) -> None:
+    supplier = _supplier(admin_client, "Brico Dépôt")
+    assert admin_client.delete(f"{API}/suppliers/{supplier['id']}", headers=CSRF).status_code == 204
+
+    archived = admin_client.get(f"{API}/suppliers/archived").json()
+    assert [s["id"] for s in archived] == [supplier["id"]]
+    assert admin_client.get(f"{API}/suppliers").json() == []
+
+    # Le nom reste réservé tant que le fournisseur est archivé.
+    taken = admin_client.post(f"{API}/suppliers", json={"name": "brico dépôt"}, headers=CSRF)
+    assert taken.status_code == 409 and taken.json()["code"] == "supplier_exists"
+
+    r = admin_client.post(f"{API}/suppliers/{supplier['id']}/restore", headers=CSRF)
+    assert r.status_code == 200, r.text
+    assert r.json()["id"] == supplier["id"]
+    assert [s["name"] for s in admin_client.get(f"{API}/suppliers").json()] == ["Brico Dépôt"]
+    assert admin_client.get(f"{API}/suppliers/archived").json() == []
+
+    again = admin_client.post(f"{API}/suppliers/{supplier['id']}/restore", headers=CSRF)
+    assert again.status_code == 409 and again.json()["code"] == "not_archived"

@@ -7,6 +7,7 @@ import type { Supplier } from "../types";
 export default function Fournisseurs() {
   const { canWrite } = useAuth();
   const [suppliers, setSuppliers] = useState<Supplier[] | null>(null);
+  const [archived, setArchived] = useState<Supplier[]>([]);
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [notes, setNotes] = useState("");
@@ -18,6 +19,20 @@ export default function Fournisseurs() {
       .get<Supplier[]>("/suppliers")
       .then(setSuppliers)
       .catch((e) => setError(e instanceof ApiError ? e.message : "Liste indisponible."));
+    api
+      .get<Supplier[]>("/suppliers/archived")
+      .then(setArchived)
+      .catch(() => setArchived([]));
+  }
+
+  async function restore(supplier: Supplier) {
+    setError(null);
+    try {
+      await api.post(`/suppliers/${supplier.id}/restore`);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Restauration impossible.");
+    }
   }
 
   useEffect(load, []);
@@ -99,6 +114,23 @@ export default function Fournisseurs() {
           ))}
         </ul>
       </section>
+
+      {canWrite && archived.length > 0 && (
+        <section className="card">
+          <h2>Archivés ({archived.length})</h2>
+          <p className="muted small">Un fournisseur archivé ne figure plus dans les listes, mais son nom reste réservé.</p>
+          <ul className="list">
+            {archived.map((s) => (
+              <li key={s.id}>
+                <span className="muted">{s.name}</span>{" "}
+                <button type="button" className="linklike" onClick={() => restore(s)}>
+                  Restaurer
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

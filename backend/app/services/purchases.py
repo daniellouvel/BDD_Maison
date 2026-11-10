@@ -57,7 +57,7 @@ def _clean_name(name: str) -> str:
 def create_supplier(db: Session, data: SupplierIn, actor: User) -> Supplier:
     name = _clean_name(data.name)
     if _name_taken(db, name):
-        raise ApiError(409, "supplier_exists", "Un fournisseur porte déjà ce nom.")
+        raise ApiError(409, "supplier_exists", "Un fournisseur porte déjà ce nom (actif ou archivé).")
     supplier = Supplier(name=name, url=(data.url or "").strip() or None, notes=(data.notes or "").strip() or None)
     db.add(supplier)
     db.flush()
@@ -80,6 +80,24 @@ def update_supplier(db: Session, supplier: Supplier, data: SupplierPatch, actor:
         supplier.url = (data.url or "").strip() or None
     if "notes" in data.model_fields_set:
         supplier.notes = (data.notes or "").strip() or None
+    supplier.version += 1
+    supplier.updated_at = utcnow()
+    audit(db, "supplier", supplier, actor, "update", before=before)
+    db.commit()
+    db.refresh(supplier)
+    return supplier
+
+
+def list_archived_suppliers(db: Session) -> list[Supplier]:
+    return list(db.scalars(select(Supplier).where(Supplier.archived_at.is_not(None)).order_by(Supplier.name)))
+
+
+def restore_supplier(db: Session, supplier: Supplier, actor: User) -> Supplier:
+    """Remet un fournisseur archivé dans les listes. Le nom reste unique, donc rien à revérifier."""
+    if supplier.archived_at is None:
+        raise ApiError(409, "not_archived", "Ce fournisseur n'est pas archivé.")
+    before = snapshot(supplier)
+    supplier.archived_at = None
     supplier.version += 1
     supplier.updated_at = utcnow()
     audit(db, "supplier", supplier, actor, "update", before=before)

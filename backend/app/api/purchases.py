@@ -39,6 +39,20 @@ def create_supplier(body: SupplierIn, db: DbSession, user: Writer) -> Supplier:
     return service.create_supplier(db, body, user)
 
 
+@router.get("/suppliers/archived", response_model=list[SupplierOut])
+def list_archived_suppliers(db: DbSession, _: CurrentUser) -> list[Supplier]:
+    # Déclaré avant /suppliers/{supplier_id} : sinon « archived » serait lu comme un identifiant.
+    return service.list_archived_suppliers(db)
+
+
+@router.post("/suppliers/{supplier_id}/restore", response_model=SupplierOut)
+def restore_supplier(supplier_id: uuid.UUID, db: DbSession, user: Writer) -> Supplier:
+    supplier = db.get(Supplier, supplier_id)
+    if supplier is None:
+        raise ApiError(404, "not_found", "Fournisseur introuvable")
+    return service.restore_supplier(db, supplier, user)
+
+
 @router.get("/suppliers/{supplier_id}", response_model=SupplierOut)
 def get_supplier(supplier_id: uuid.UUID, db: DbSession, _: CurrentUser) -> Supplier:
     return get_active(db, Supplier, supplier_id, "Fournisseur")

@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
+import BoxPlan from "../components/BoxPlan";
 import LabelField from "../components/LabelField";
 import ArticleDetailScreen from "./ArticleDetail";
 import { fetchLabel, normalizeCode } from "../qr";
@@ -486,6 +487,7 @@ function Detail({
         </div>
       )}
 
+      {canHaveChildren && <BoxPlan node={node} contents={kids} canWrite={canWrite} onChanged={load} />}
       {canHaveChildren && (
         <section className="detail-card">
           <h3>Contenu ({kids.length})</h3>

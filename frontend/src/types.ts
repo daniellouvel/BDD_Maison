@@ -250,3 +250,27 @@ export interface Analysis {
   similar: SimilarHit[];
   warnings: string[];
 }
+
+/** Case d'un modèle de plan : rectangle en millimètres, nom facultatif. */
+export interface PlanCell {
+  name: string | null;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface PlanLevel {
+  name: string | null;
+  cells: PlanCell[];
+}
+
+/** Modèle de plan réutilisable (armoire, boîte, tiroir) : affecté à un contenant, il en copie la grille. */
+export interface PlanModel {
+  id: string;
+  name: string;
+  width_mm: number;
+  height_mm: number;
+  levels: PlanLevel[];
+  version: number;
+}

@@ -9,6 +9,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
+    Float,
     ForeignKey,
     Identity,
     Index,
@@ -374,3 +375,21 @@ class SavedView(Base):
     name: Mapped[str] = mapped_column(String(120))
     query: Mapped[str] = mapped_column(String(200))
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Plan(Base):
+    """Modèle de plan réutilisable (armoire, boîte, tiroir…). Affecté à un contenant, il crée
+    les étages et les cases ; le plan du contenant est ensuite une copie indépendante."""
+
+    __tablename__ = "plans"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(120))
+    width_mm: Mapped[float] = mapped_column(Float)
+    height_mm: Mapped[float] = mapped_column(Float)
+    # Étages : [{"name": str | None, "cells": [{"name": str | None, "x", "y", "w", "h"}]}]
+    levels: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    archived_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))

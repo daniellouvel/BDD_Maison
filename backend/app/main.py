@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy import text
 
-from app.api import ai, auth, catalog, files, nodes, qr, search, stock, views
+from app.api import ai, auth, catalog, files, nodes, plans, qr, search, stock, views
 from app.api.deps import CSRF_HEADER
 from app.core.db import get_session_factory
 from app.core.errors import ApiError
@@ -52,7 +52,7 @@ async def csrf_guard(
 
 
 PREFIX = "/api/v1"
-for router_module in (auth, catalog, nodes, stock, files, search, qr, ai, views):
+for router_module in (auth, catalog, nodes, plans, stock, files, search, qr, ai, views):
     app.include_router(router_module.router, prefix=PREFIX)
 
 

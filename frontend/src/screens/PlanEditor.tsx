@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent } from "rea
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
-import type { BoxCell, BoxLayout, Node, NodeDetail, NodeType } from "../types";
+import { MIN_SIZE, SNAP, attach, clamp, round1, snapAxis } from "../components/planGeometry";
+import type { BoxCell, BoxLayout, Node, NodeDetail, NodeType, PlanModel } from "../types";
 
 /**
  * Éditeur de plan dédié (PC). Trois colonnes : étages et contenants non placés à gauche,
@@ -11,13 +12,8 @@ import type { BoxCell, BoxLayout, Node, NodeDetail, NodeType } from "../types";
 
 type Rect = { x: number; y: number; w: number; h: number };
 
-const SNAP = 5; // millimètres
-const MIN_SIZE = 10; // millimètres
 const PALETTE = ["#3b82f6", "#22c55e", "#f97316", "#a855f7", "#ef4444", "#14b8a6", "#eab308", "#ec4899"];
 const NO_TYPE = "#94a3b8";
-const snap = (v: number) => Math.round(v / SNAP) * SNAP;
-const clamp = (v: number, max: number) => Math.min(max, Math.max(0, v));
-const round1 = (v: number) => Math.round(v * 10) / 10;
 
 function normalize(stored: BoxLayout | null | undefined): BoxLayout {
   if (stored && Array.isArray(stored.levels)) {
@@ -37,6 +33,8 @@ export default function PlanEditor() {
   const [nodes, setNodes] = useState<Record<string, Node>>({}); // étages, cases et contenants connus
   const [types, setTypes] = useState<NodeType[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [models, setModels] = useState<PlanModel[]>([]);
+  const [chosenModel, setChosenModel] = useState("");
 
   const [active, setActive] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
@@ -91,6 +89,21 @@ export default function PlanEditor() {
   useEffect(() => {
     api.get<NodeType[]>("/node-types").then(setTypes).catch(() => setTypes([]));
   }, []);
+
+  // Modèles proposés pour une boîte sans plan.
+  useEffect(() => {
+    if (!canWrite) return;
+    api.get<PlanModel[]>("/plans").then(setModels).catch(() => setModels([]));
+  }, [canWrite]);
+
+  async function applyModel() {
+    if (!box || !chosenModel) return;
+    await run(async () => {
+      await api.post(`/plans/${chosenModel}/apply`, { node_id: box.id, node_version: box.version });
+      setChosenModel("");
+      await load();
+    }, "Affectation impossible.");
+  }
 
   // Champs de dimensions suivent le plan enregistré.
   useEffect(() => {
@@ -283,25 +296,6 @@ export default function PlanEditor() {
     return { x: attach(rawX, xs, p.tolX), y: attach(rawY, ys, p.tolY) };
   }
 
-  /**
-   * Position d'une case sur un axe : s'accroche aux murs et aux bords des autres cases (alignement
-   * ou contact), à 10 px près, sinon à la grille de 5 mm. Reste dans le plan.
-   */
-  function snapAxis(v: number, size: number, max: number, edges: number[], tol: number) {
-    const candidates = [0, max - size];
-    for (const edge of edges) candidates.push(edge, edge - size);
-    let best = candidates[0];
-    for (const c of candidates) if (Math.abs(c - v) < Math.abs(best - v)) best = c;
-    const value = Math.abs(best - v) <= tol ? best : snap(v);
-    return Math.min(Math.max(0, value), max - size);
-  }
-
-  function attach(v: number, candidates: number[], tolerance: number) {
-    let best = candidates[0];
-    for (const c of candidates) if (Math.abs(c - v) < Math.abs(best - v)) best = c;
-    return Math.abs(best - v) <= tolerance ? best : snap(v);
-  }
-
   function onDown(e: PointerEvent<SVGSVGElement>) {
     const cell = (e.target as Element).closest?.("[data-cell]");
     if (cell) {
@@ -400,6 +394,32 @@ export default function PlanEditor() {
         <h1>Plan : {box.name ?? box.article_name ?? "Boîte"}</h1>
         <span className="muted small">{box.breadcrumb.map((b) => b.name).join(" › ")}</span>
       </div>
+
+      {layout.levels.length === 0 && canWrite && (
+        <section className="card">
+          <h2>Affecter un plan</h2>
+          {models.length === 0 ? (
+            <p className="muted small">
+              Aucun modèle. Créez-en un dans <a href="/plans">Plans</a>, puis revenez ici.
+            </p>
+          ) : (
+            <div className="row">
+              <select value={chosenModel} onChange={(e) => setChosenModel(e.target.value)}>
+                <option value="">— choisir un modèle —</option>
+                {models.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} ({m.width_mm} × {m.height_mm} mm)
+                  </option>
+                ))}
+              </select>
+              <button type="button" disabled={!chosenModel || busy} onClick={applyModel}>
+                Affecter ce plan
+              </button>
+            </div>
+          )}
+          <p className="muted small">Le contenant reçoit une copie des étages et des cases du modèle.</p>
+        </section>
+      )}
 
       <div className="plan-screen">
         {/* Colonne gauche : étages et contenants non placés */}

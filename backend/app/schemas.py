@@ -472,3 +472,48 @@ class FieldDefPatch(BaseModel):
     unit: str | None = Field(default=None, max_length=16)
     options: list[str] | None = None
     required: bool | None = None
+
+
+# --- Modèles de plans ---------------------------------------------------------------------------
+
+
+class PlanCellIn(BaseModel):
+    """Case d'un modèle : nom facultatif (sinon « Case n »), rectangle en millimètres."""
+
+    name: str | None = Field(default=None, max_length=200)
+    x: float = Field(ge=0, le=30000)
+    y: float = Field(ge=0, le=30000)
+    w: float = Field(gt=0, le=30000)
+    h: float = Field(gt=0, le=30000)
+
+
+class PlanLevelIn(BaseModel):
+    name: str | None = Field(default=None, max_length=200)
+    cells: list[PlanCellIn] = Field(default_factory=list, max_length=500)
+
+
+class PlanIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    width_mm: float = Field(gt=0, le=30000)
+    height_mm: float = Field(gt=0, le=30000)
+    levels: list[PlanLevelIn] = Field(default_factory=list, max_length=20)
+
+
+class PlanUpdate(PlanIn):
+    version: int
+
+
+class PlanOut(_Base):
+    id: uuid.UUID
+    name: str
+    width_mm: float
+    height_mm: float
+    levels: list[PlanLevelIn]
+    version: int
+
+
+class PlanApply(BaseModel):
+    """Affectation d'un modèle à un contenant. La version du contenant évite d'écraser une modif récente."""
+
+    node_id: uuid.UUID
+    node_version: int

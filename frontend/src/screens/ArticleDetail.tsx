@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, ApiError, fileUrl, formatQty, thumbUrl } from "../api";
 import { useAuth } from "../auth";
+import CategoryPicker from "../components/CategoryPicker";
 import MovementForm from "../components/MovementForm";
 import SimilarList from "../components/SimilarList";
 import { categoryLabel, inheritedFields } from "../fields";
@@ -588,14 +589,7 @@ function ArticleEdit({
       </label>
       <label>
         Catégorie
-        <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-          <option value="">—</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {categoryLabel(categories, c.id)}
-            </option>
-          ))}
-        </select>
+        <CategoryPicker categories={categories} value={categoryId} onChange={setCategoryId} emptyLabel="—" />
       </label>
       <label>
         Marque

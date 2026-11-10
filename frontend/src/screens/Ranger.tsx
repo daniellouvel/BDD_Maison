@@ -2,10 +2,10 @@ import { FormEvent, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import LabelField from "../components/LabelField";
+import CategoryPicker from "../components/CategoryPicker";
 import LocationPicker from "../components/LocationPicker";
 import PhotoAnalysis from "../components/PhotoAnalysis";
 import { normalizeCode } from "../qr";
-import { categoryLabel } from "../fields";
 import type { Analysis, Article, Category, Identification, NodeDetail } from "../types";
 
 /**
@@ -208,14 +208,7 @@ export default function Ranger() {
           <input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="Unité (pcs, g…)" />
         </div>
         {!existing && (
-          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-            <option value="">Catégorie (facultatif)</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {categoryLabel(categories, c.id)}
-              </option>
-            ))}
-          </select>
+          <CategoryPicker categories={categories} value={categoryId} onChange={setCategoryId} />
         )}
         <LabelField value={labelCode} onChange={setLabelCode} />
 

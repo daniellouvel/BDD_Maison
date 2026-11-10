@@ -213,16 +213,27 @@ label.checkbox input { width: auto; }
 .plan-head h1 { margin: 0; }
 .plan-screen { display: grid; gap: 1rem; }
 .plan-screen { grid-template-columns: minmax(0, 1fr); }
+/* Colonnes latérales à la hauteur de l'écran : elles défilent elles-mêmes, pas la page. */
+.plan-screen > aside { max-height: calc(100vh - 170px); overflow: auto; }
 @media (min-width: 820px) {
-  .content:has(> .plan-page) { max-width: none; margin-right: 1rem; }
-  .plan-screen { grid-template-columns: 210px minmax(0, 1fr); align-items: start; }
-  .plan-side { grid-column: 1 / -1; }
+  .content:has(> .plan-page) { max-width: none; margin-right: 1rem; padding: 0.5rem 1rem 0.5rem 0; }
+  .plan-screen { align-items: start; }
+  /* Largeur moyenne : le plan à gauche, étages et inspecteur à droite. */
+  .plan-screen { grid-template-columns: minmax(0, 1fr) 260px; }
+  .plan-screen > aside:first-child { grid-column: 2; grid-row: 1; }
+  .plan-main { grid-column: 1; grid-row: 1 / span 2; }
+  .plan-side { grid-column: 2; grid-row: 2; }
 }
 @media (min-width: 1200px) {
+  /* Grand écran : étages à gauche, plan au centre, inspecteur à droite. */
   .plan-screen { grid-template-columns: 210px minmax(0, 1fr) 280px; }
-  .plan-side { grid-column: auto; }
+  .plan-screen > aside:first-child, .plan-main, .plan-side { grid-column: auto; grid-row: auto; }
 }
 .plan-main { min-width: 0; }
+@media (min-width: 1200px) {
+  /* Colonnes latérales à la hauteur de l'écran : elles défilent elles-mêmes, pas la page. */
+  .plan-screen > aside { max-height: calc(100vh - 170px); overflow: auto; }
+}
 .plan-toolbar { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: flex-end; margin-bottom: 0.6rem; }
 .plan-toolbar label { display: grid; gap: 0.2rem; }
 .plan-toolbar input { width: 7rem; }

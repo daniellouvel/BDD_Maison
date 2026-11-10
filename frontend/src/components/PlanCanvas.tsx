@@ -310,6 +310,8 @@ export default function PlanCanvas<T extends CanvasRect>({
       <svg
         ref={surface}
         className="plan-svg"
+        // Le plan tient dans la hauteur de l'écran (sans défiler) : largeur bornée selon son format.
+        style={{ width: `min(100%, max(360px, calc((100vh - 260px) * ${((W + 2 * M) / (H + 2 * M)).toFixed(4)})))`, margin: "0 auto" }}
         viewBox={`${-M} ${-M} ${W + 2 * M} ${H + 2 * M}`}
         onPointerDown={onDown}
         onPointerMove={onMove}

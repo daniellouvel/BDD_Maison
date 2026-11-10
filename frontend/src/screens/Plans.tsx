@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
+import Fold from "../components/Fold";
 import type { PlanCell, PlanLevel, PlanModel } from "../types";
 
 type PresetLevel = { name: string | null; base: boolean; cells: PlanCell[] };
@@ -128,6 +129,7 @@ export default function Plans() {
       </p>
 
       {canWrite && (
+        <Fold title="Créer un plan" keepHeadings>
         <section className="card form">
           <h2>À partir d'un préréglage</h2>
           <select value={presetIndex} onChange={(e) => setPresetIndex(Number(e.target.value))}>
@@ -142,9 +144,6 @@ export default function Plans() {
           </button>
           <p className="muted small">Le modèle est créé avec ses cases ; vous pouvez ensuite le modifier comme un autre.</p>
         </section>
-      )}
-
-      {canWrite && (
         <form className="card form" onSubmit={create}>
           <h2>Nouveau plan</h2>
           <input placeholder="Nom (ex. Armoire 4 tiroirs)" value={name} onChange={(e) => setName(e.target.value)} />
@@ -163,6 +162,7 @@ export default function Plans() {
             {busy ? "Création…" : "Créer et dessiner le plan"}
           </button>
         </form>
+        </Fold>
       )}
       {!canWrite && error && <p className="error small">{error}</p>}
 

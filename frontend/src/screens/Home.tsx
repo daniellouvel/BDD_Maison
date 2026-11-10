@@ -32,7 +32,7 @@ export default function Home() {
   const changed = () => setTreeKey((k) => k + 1);
 
   return (
-    <div className={`explorer${selected && !moving ? " explorer-focus" : ""}`}>
+    <div className={`explorer${selected && !moving ? " explorer-focus" : ""}${selected ? "" : " explorer-empty"}`}>
       <div className="explorer-top">
         <Search onPick={select} />
         <span className="muted small">
@@ -460,7 +460,7 @@ function Detail({
       )}
 
       {canWrite && !moving && (
-        <div className="row">
+        <div className="row detail-row">
           {canHaveChildren && (
             <button type="button" onClick={() => setPanel(panel === "add" ? "none" : "add")}>
               Ajouter ici
@@ -471,9 +471,10 @@ function Detail({
               Ranger ici
             </button>
           )}
+          {/* Sur téléphone, un objet a déjà « Déplacer » dans la barre fixe du bas. */}
           <button
             type="button"
-            className="secondary"
+            className={`secondary${node.kind === "item" ? " phone-hide" : ""}`}
             onClick={() => onStartMove({ id: node.id, name: node.name ?? node.article_name ?? "élément", version: node.version })}
           >
             Déplacer
@@ -528,12 +529,17 @@ function Detail({
         </div>
       )}
 
-      {canHaveChildren && <PlanPreview key={node.id} node={node} canWrite={canWrite} onChanged={load} />}
+      {/* Sur téléphone, le contenu passe avant le plan : c'est par lui qu'on navigue. */}
+      {canHaveChildren && (
+        <div className="phone-last">
+          <PlanPreview key={node.id} node={node} canWrite={canWrite} onChanged={load} />
+        </div>
+      )}
       {canHaveChildren && (
         <section className="detail-card">
           <h3>Contenu ({kids.length})</h3>
           {kids.length === 0 && <p className="muted small">Vide.</p>}
-          <ul className="list">
+          <ul className="list content-list">
             {kids.map((k) => (
               <li key={k.id}>
                 <button type="button" className="linklike" onClick={() => onSelect(k.id)}>

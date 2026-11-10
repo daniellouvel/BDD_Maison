@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
+import Fold from "../components/Fold";
 import LocationPicker from "../components/LocationPicker";
 import type { Article, NodeDetail, Offer, PricePoint, Purchase, PurchaseStatus, Supplier } from "../types";
 
@@ -187,6 +188,7 @@ export default function Achats() {
       {error && <p className="error small">{error}</p>}
 
       {canWrite && (
+        <Fold title="Ajouter à la liste">
         <form className="card form" onSubmit={add}>
           <h2>Ajouter à la liste</h2>
           <ArticlePicker value={article} onChange={setArticle} />
@@ -221,6 +223,7 @@ export default function Achats() {
             Ajouter à la liste
           </button>
         </form>
+        </Fold>
       )}
 
       <section className="card">
@@ -289,6 +292,7 @@ export default function Achats() {
         </ul>
       </section>
 
+      <Fold title="Prix par fournisseur">
       <section className="card">
         <h2>Prix par fournisseur</h2>
         <ArticlePicker value={article} onChange={setArticle} />
@@ -369,6 +373,7 @@ export default function Achats() {
           </>
         )}
       </section>
+      </Fold>
     </div>
   );
 }

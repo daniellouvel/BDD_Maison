@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
+import Fold from "../components/Fold";
 import type { Supplier } from "../types";
 
 /** Fournisseurs : sites marchands et magasins où l'on achète. Les offres et prix sont dans « Achats ». */
@@ -74,6 +75,7 @@ export default function Fournisseurs() {
       </p>
 
       {canWrite && (
+        <Fold title="Nouveau fournisseur">
         <form className="card form" onSubmit={create}>
           <h2>Nouveau fournisseur</h2>
           <input placeholder="Nom (ex. Leroy Merlin)" value={name} onChange={(e) => setName(e.target.value)} />
@@ -84,6 +86,7 @@ export default function Fournisseurs() {
             {busy ? "Création…" : "Ajouter"}
           </button>
         </form>
+        </Fold>
       )}
       {!canWrite && error && <p className="error small">{error}</p>}
 

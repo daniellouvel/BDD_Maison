@@ -77,30 +77,6 @@ h2 { font-size: 1.05rem; margin: 0 0 0.5rem; }
 }
 .sheet-grip { width: 40px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 0.6rem; }
 .sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; }
-@media (max-width: 899px) {
-  .phone-actions {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem;
-    position: fixed; left: 0; right: 0; bottom: calc(3.6rem + env(safe-area-inset-bottom)); z-index: 4;
-    padding: 0.5rem 0.6rem; background: var(--surface); border-top: 1px solid var(--border);
-  }
-  .phone-actions button { min-height: 48px; font-size: 0.95rem; font-weight: 600; }
-  .content { padding-bottom: 9.5rem; }
-  .bottombar-more { flex: 1; text-align: center; padding: 0.8rem 0.25rem; color: var(--muted); background: none; border: 0; font: inherit; font-size: 0.9rem; min-height: 48px; }
-  .more-list { display: flex; flex-direction: column; }
-  .more-list a { display: block; padding: 0.9rem 0.4rem; border-bottom: 1px solid var(--border); color: inherit; text-decoration: none; font-size: 1rem; min-height: 48px; }
-  .more-list a.active { color: var(--accent); font-weight: 600; }
-  .fold-head {
-    width: 100%; min-height: 48px; display: flex; justify-content: space-between; align-items: center;
-    background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0 0.9rem;
-    font: inherit; font-weight: 600; color: inherit; margin-bottom: 0.5rem;
-  }
-  .fold > .card { margin-top: 0; }
-  .fold > .card > h2 { display: none; }
-  /* Un élément ouvert masque l'arbre : on voit la fiche, le contenu et le fil d'Ariane. */
-  .explorer.explorer-focus .explorer-tree { display: none; }
-  .phone-back { display: inline-flex; min-height: 44px; margin-bottom: 0.6rem; }
-}
-
 .card {
   background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
   padding: 1rem; margin-bottom: 1rem;
@@ -327,6 +303,8 @@ label.checkbox input { width: auto; }
 .detail-actions { display: flex; gap: 0.4rem; align-items: flex-start; flex-wrap: wrap; }
 .detail-card { background: var(--card, #fff); border: 1px solid var(--border); border-radius: 12px; padding: 0.8rem 0.9rem; }
 .detail-card h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+/* Une liste déroulante ne dépasse jamais de sa carte, même avec un libellé long. */
+.detail-card select { max-width: 100%; }
 .content-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.5rem; }
 .content-card { display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem; text-align: left; padding: 0.6rem; border-radius: 10px; border: 1px solid var(--border); background: #fff; color: inherit; font-weight: normal; min-height: auto; }
 .content-card span { font-size: 1.2rem; }
@@ -356,7 +334,8 @@ label.checkbox input { width: auto; }
 .explorer-search { position: relative; flex: 1; min-width: 260px; }
 .search-results { position: absolute; left: 0; right: 0; z-index: 10; max-height: 60vh; overflow: auto; margin-top: 0.3rem; }
 .search-hit { padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
-.explorer-body { display: grid; gap: 0.8rem; }
+/* minmax(0, 1fr) : une colonne ne s'élargit jamais au-delà de l'écran à cause de son contenu. */
+.explorer-body { display: grid; gap: 0.8rem; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 820px) { .explorer-body { grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); align-items: start; } }
 @media (min-width: 1200px) { .explorer-body { grid-template-columns: minmax(340px, 440px) minmax(0, 1fr); } }
 .explorer-tree { max-height: 75vh; overflow: auto; }
@@ -382,3 +361,48 @@ label.checkbox input { width: auto; }
 .move-inline p { margin: 0 0 0.4rem; font-size: 0.9rem; }
 .move-confirm { margin-top: 0.5rem; padding: 0.5rem 0.6rem; border-radius: 8px; background: rgba(180, 83, 9, 0.08); }
 .move-confirm p { margin: 0 0 0.4rem; font-size: 0.9rem; }
+
+/* --- Téléphone (moins de 900 px) : à la fin du fichier pour passer après les règles de base --- */
+@media (max-width: 899px) {
+  .phone-actions {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem;
+    position: fixed; left: 0; right: 0; bottom: calc(3.6rem + env(safe-area-inset-bottom)); z-index: 4;
+    padding: 0.5rem 0.6rem; background: var(--surface); border-top: 1px solid var(--border);
+  }
+  .phone-actions button { min-height: 48px; font-size: 0.95rem; font-weight: 600; }
+  .content { padding-bottom: 9.5rem; }
+  .bottombar-more { flex: 1; text-align: center; padding: 0.8rem 0.25rem; color: var(--muted); background: none; border: 0; font: inherit; font-size: 0.9rem; min-height: 48px; }
+  .more-list { display: flex; flex-direction: column; }
+  .more-list a { display: block; padding: 0.9rem 0.4rem; border-bottom: 1px solid var(--border); color: inherit; text-decoration: none; font-size: 1rem; min-height: 48px; }
+  .more-list a.active { color: var(--accent); font-weight: 600; }
+  .fold-head {
+    width: 100%; min-height: 48px; display: flex; justify-content: space-between; align-items: center;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0 0.9rem;
+    font: inherit; font-weight: 600; color: inherit; margin-bottom: 0.5rem;
+  }
+  .fold > .card { margin-top: 0; }
+  .fold:not(.fold-keep) > .card > h2 { display: none; }
+  .fold { margin-bottom: 0.5rem; }
+  /* Un élément ouvert masque l'arbre : on voit la fiche, le contenu et le fil d'Ariane. */
+  .explorer.explorer-focus .explorer-tree { display: none; }
+  .phone-back { display: inline-flex; align-self: flex-start; min-height: 44px; margin-bottom: 0.6rem; }
+  .phone-hide { display: none; }
+  /* Rien de sélectionné : pas de carte vide sous la liste. */
+  .explorer.explorer-empty .explorer-detail { display: none; }
+  /* La liste des emplacements défile avec la page, avec des lignes faciles à toucher. */
+  .explorer-body { grid-template-columns: minmax(0, 1fr); }
+  .explorer-tree { max-height: none; overflow: visible; }
+  .org-list { list-style: none; margin: 0; padding: 0; }
+  .org-name { min-height: 46px; display: flex; align-items: center; gap: 0.4rem; font-size: 1rem; }
+  .org-caret { width: 2.4rem; min-height: 46px; font-size: 1.1rem; }
+  .org-list .org-list { margin-left: 1rem; }
+  /* Fiche d'un emplacement : contenu avant le plan, actions compactes. */
+  .explorer-detail { display: flex; flex-direction: column; min-height: 0; }
+  .explorer-detail > * { flex: none; }
+  .explorer-detail > .phone-last { order: 5; margin-top: 0.8rem; }
+  .explorer-detail > .detail-card { margin-top: 0.8rem; }
+  .detail-row > * { flex: 1 1 30%; padding-left: 0.4rem; padding-right: 0.4rem; font-size: 0.92rem; }
+  .content-list li { padding: 0; }
+  .content-list .linklike { display: inline-flex; align-items: center; min-height: 48px; margin-left: 0; text-decoration: none; font-size: 1rem; }
+  .card.form input:not([type="checkbox"]):not([type="radio"]), .card.form select { width: 100%; }
+}

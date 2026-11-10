@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
+import Fold from "../components/Fold";
 import { extractCode } from "../qr";
 import type { LabelLayout, QrStats, Sheet, SheetPreview } from "../types";
 
@@ -121,6 +122,7 @@ function NewSheet({ onCreated }: { onCreated: () => void }) {
   }
 
   return (
+    <Fold title="Nouvelle planche">
     <form className="card form" onSubmit={submit}>
       <h2>Nouvelle planche</h2>
       <p className="muted small">Codes neufs, à la suite de la séquence. Aucun doublon possible.</p>
@@ -148,6 +150,7 @@ function NewSheet({ onCreated }: { onCreated: () => void }) {
         </p>
       )}
     </form>
+    </Fold>
   );
 }
 
@@ -198,6 +201,7 @@ function Reprint({ onCreated }: { onCreated: () => void }) {
   }
 
   return (
+    <Fold title="Réimprimer des étiquettes">
     <section className="card">
       <form className="form" onSubmit={check}>
         <h2>Réimprimer des étiquettes existantes</h2>
@@ -252,6 +256,7 @@ function Reprint({ onCreated }: { onCreated: () => void }) {
         </p>
       )}
     </section>
+    </Fold>
   );
 }
 

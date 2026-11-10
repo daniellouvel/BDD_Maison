@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
@@ -156,6 +156,16 @@ function Tree({ selected, onSelect }: { selected: string | null; onSelect: (id: 
   const [roots, setRoots] = useState<Node[] | null>(null);
   const [names, setNames] = useState<Names>({});
   const [error, setError] = useState<string | null>(null);
+  // Ancêtres de l'élément sélectionné (de la racine à lui) : leurs branches s'ouvrent seules.
+  const [path, setPath] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!selected) return setPath([]);
+    api
+      .get<NodeDetail>(`/nodes/${selected}`)
+      .then((d) => setPath(d.breadcrumb.map((b) => b.id)))
+      .catch(() => setPath([]));
+  }, [selected]);
 
   const load = useCallback(() => {
     api
@@ -184,7 +194,7 @@ function Tree({ selected, onSelect }: { selected: string | null; onSelect: (id: 
           <p className="org-group">À ranger ({unplaced.length})</p>
           <ul className="org-list">
             {unplaced.map((n) => (
-              <TreeRow key={n.id} node={n} depth={0} names={names} selected={selected} onSelect={onSelect} setNames={setNames} />
+              <TreeRow key={n.id} node={n} depth={0} names={names} selected={selected} path={path} onSelect={onSelect} setNames={setNames} />
             ))}
           </ul>
         </>
@@ -192,7 +202,7 @@ function Tree({ selected, onSelect }: { selected: string | null; onSelect: (id: 
       <p className="org-group">Emplacements</p>
       <ul className="org-list">
         {placed.map((n) => (
-          <TreeRow key={n.id} node={n} depth={0} names={names} selected={selected} onSelect={onSelect} setNames={setNames} />
+          <TreeRow key={n.id} node={n} depth={0} names={names} selected={selected} path={path} onSelect={onSelect} setNames={setNames} />
         ))}
       </ul>
     </>
@@ -204,6 +214,7 @@ function TreeRow({
   depth,
   names,
   selected,
+  path,
   onSelect,
   setNames,
 }: {
@@ -211,16 +222,19 @@ function TreeRow({
   depth: number;
   names: Names;
   selected: string | null;
+  path: string[];
   onSelect: (id: string) => void;
   setNames: (f: (n: Names) => Names) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [kids, setKids] = useState<Node[] | null>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
   const expandable = node.kind !== "item";
   const label = node.name ?? (node.article_id ? names[node.article_id] : null) ?? "Sans nom";
+  const isSelected = selected === node.id;
+  const onPath = path.includes(node.id) && !isSelected;
 
-  async function toggle() {
-    const next = !open;
+  async function openNode(next: boolean) {
     setOpen(next);
     if (next && kids === null) {
       const list = await api.get<Node[]>(`/nodes?parent_id=${node.id}`).catch(() => [] as Node[]);
@@ -230,10 +244,21 @@ function TreeRow({
     }
   }
 
+  // Un ancêtre de l'élément sélectionné s'ouvre tout seul : on voit où il est rangé.
+  useEffect(() => {
+    if (onPath && expandable && !open) void openNode(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onPath]);
+
+  // La ligne sélectionnée reste visible dans l'arbre défilant.
+  useEffect(() => {
+    if (isSelected) rowRef.current?.scrollIntoView({ block: "nearest" });
+  }, [isSelected]);
+
   return (
     <li>
-      <div className={`org-row${selected === node.id ? " org-selected" : ""}`} style={{ paddingLeft: `${depth * 1.1 + 0.4}rem` }}>
-        <button type="button" className="org-caret" disabled={!expandable} onClick={toggle} aria-label="Déplier">
+      <div ref={rowRef} className={`org-row${isSelected ? " org-selected" : ""}`}>
+        <button type="button" className="org-caret" disabled={!expandable} onClick={() => openNode(!open)} aria-label="Déplier">
           {expandable ? (open ? "▾" : "▸") : ""}
         </button>
         <button type="button" className="org-name" onClick={() => onSelect(node.id)}>
@@ -244,15 +269,11 @@ function TreeRow({
       {open && kids && kids.length > 0 && (
         <ul className="org-list">
           {kids.map((k) => (
-            <TreeRow key={k.id} node={k} depth={depth + 1} names={names} selected={selected} onSelect={onSelect} setNames={setNames} />
+            <TreeRow key={k.id} node={k} depth={depth + 1} names={names} selected={selected} path={path} onSelect={onSelect} setNames={setNames} />
           ))}
         </ul>
       )}
-      {open && kids && kids.length === 0 && (
-        <p className="muted small" style={{ paddingLeft: `${depth * 1.1 + 2}rem` }}>
-          Vide
-        </p>
-      )}
+      {open && kids && kids.length === 0 && <p className="muted small org-empty">Vide</p>}
     </li>
   );
 }

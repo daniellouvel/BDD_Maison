@@ -279,7 +279,12 @@ label.checkbox input { width: auto; }
 .org-group { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted, #777); margin: 0.6rem 0.3rem 0.2rem; }
 .org-row { display: flex; align-items: center; gap: 0.1rem; border-radius: 8px; }
 .org-row:hover { background: rgba(0, 0, 0, 0.04); }
-.org-row.org-selected { background: rgba(180, 83, 9, 0.12); }
+/* Sélection bien visible : fond plein, barre colorée à gauche, texte en gras. */
+.org-row.org-selected { background: rgba(180, 83, 9, 0.2); box-shadow: inset 4px 0 0 var(--accent); }
+.org-row.org-selected .org-name { font-weight: 700; }
+/* Hiérarchie : chaque niveau se décale peu, avec un trait vertical qui relie les enfants à leur parent. */
+.org-list .org-list { margin: 0 0 0 0.5rem; padding: 0 0 0 0.35rem; border-left: 1px solid var(--border); list-style: none; }
+.org-empty { margin: 0 0 0 1.8rem; }
 .org-caret { background: none; border: none; width: 1.4rem; min-height: auto; padding: 0; color: var(--muted, #777); }
 .org-name { background: none; border: none; text-align: left; padding: 0.35rem 0.2rem; min-height: auto; flex: 1; min-width: 0; overflow-wrap: anywhere; line-height: 1.3; color: inherit; font-weight: normal; }
 .detail-cards { display: grid; gap: 0.8rem; }

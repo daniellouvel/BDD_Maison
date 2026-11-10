@@ -10,7 +10,8 @@ import { MIN_SIZE, SNAP, attach, clamp, round1, snapAxis } from "./planGeometry"
  * - glisser une poignée de la case sélectionnée la redimensionne ;
  * - un simple clic sélectionne la case visée.
  * Une case tracée, déplacée ou redimensionnée s'arrête au bord de la case voisine qu'elle rencontre
- * (elle est rognée ou calée contre ce bord). Les bords communs restent liés.
+ * (elle est rognée ou calée contre ce bord). Un bord commun qui avance fait reculer la voisine ;
+ * un bord commun qui recule laisse un vide libre.
  */
 
 export type CanvasRect = { x: number; y: number; w: number; h: number };
@@ -95,18 +96,19 @@ type Result = CanvasRect & { valid: boolean; extra: Moved[] };
 const EPS = 0.05; // tolérance pour considérer deux bords comme confondus (mm)
 
 /**
- * Voisins qui partagent un bord de la case redimensionnée : quand ce bord bouge, leur bord commun
- * suit. Un voisin n'est concerné que s'il touche le bord d'origine sur toute sa portée commune.
+ * Voisins qui partagent un bord de la case redimensionnée. Quand ce bord avance dans un voisin, le
+ * voisin recule et suit. Quand il recule, le voisin ne bouge pas : un vide libre apparaît.
+ * Un voisin n'est concerné que s'il touche le bord d'origine sur toute sa portée commune.
  */
 function edgeFollowers(orig: CanvasRect, rect: CanvasRect, cells: CanvasRect[], skip: number, handle: string): Moved[] {
   const origRight = orig.x + orig.w;
   const origBottom = orig.y + orig.h;
   const newRight = rect.x + rect.w;
   const newBottom = rect.y + rect.h;
-  const movesLeft = handle.includes("w") && rect.x !== orig.x;
-  const movesRight = handle.includes("e") && newRight !== origRight;
-  const movesTop = handle.startsWith("n") && rect.y !== orig.y;
-  const movesBottom = handle.startsWith("s") && newBottom !== origBottom;
+  const movesLeft = handle.includes("w") && rect.x < orig.x - EPS;
+  const movesRight = handle.includes("e") && newRight > origRight + EPS;
+  const movesTop = handle.startsWith("n") && rect.y < orig.y - EPS;
+  const movesBottom = handle.startsWith("s") && newBottom > origBottom + EPS;
   const out: Moved[] = [];
   cells.forEach((c, i) => {
     if (i === skip) return;

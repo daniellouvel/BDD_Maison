@@ -2,7 +2,8 @@ import unicodedata
 import uuid
 from typing import Any
 
-from sqlalchemy import Select, func, or_, select
+from sqlalchemy import Select, Text, cast, func, literal_column, or_, select
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError, conflict_version
@@ -163,23 +164,52 @@ def _folded_column(column: Any) -> Any:
     return func.translate(func.lower(column), _ACCENTED, _PLAIN)
 
 
-def article_text_clause(q: str) -> list[Any]:
-    """Chaque mot de la requête doit apparaître dans au moins un champ texte de l'article.
+def _categories_matching(db: Session, folded_term: str) -> set[uuid.UUID]:
+    """Catégories dont le nom contient le mot, avec toutes leurs sous-catégories.
+
+    Chercher « électronique » trouve ainsi les articles rangés dans « Électronique › Régulateurs ».
+    """
+    rows = db.execute(select(Category.id, Category.parent_id, Category.name)).all()
+    children: dict[uuid.UUID | None, list[uuid.UUID]] = {}
+    for category_id, parent_id, _ in rows:
+        children.setdefault(parent_id, []).append(category_id)
+    found: set[uuid.UUID] = set()
+    stack = [category_id for category_id, _, name in rows if folded_term in fold(name)]
+    while stack:
+        category_id = stack.pop()
+        if category_id not in found:
+            found.add(category_id)
+            stack.extend(children.get(category_id, []))
+    return found
+
+
+def article_text_clause(db: Session, q: str) -> list[Any]:
+    """Chaque mot de la requête doit apparaître quelque part dans la fiche de l'article :
+    nom, marque, référence, mots-clés, description, catégorie (ou catégorie parente) ou valeur
+    d'un champ personnalisé.
 
     La comparaison ignore la casse et les accents (« resistance » trouve « Résistance »).
     """
+    # Valeurs des champs personnalisés, sans leurs clés : « ["TO-220", 1.25] » en texte.
+    attribute_values = cast(
+        func.jsonb_path_query_array(cast(Article.attributes, JSONB), literal_column("'$.*'::jsonpath")), Text
+    )
     clauses = []
     for term in q.split():
-        pattern = f"%{like_escape(fold(term))}%"
-        clauses.append(
-            or_(
-                _folded_column(Article.name).like(pattern, escape="\\"),
-                _folded_column(Article.brand).like(pattern, escape="\\"),
-                _folded_column(Article.mpn).like(pattern, escape="\\"),
-                _folded_column(Article.keywords).like(pattern, escape="\\"),
-                _folded_column(Article.description).like(pattern, escape="\\"),
-            )
-        )
+        folded = fold(term)
+        pattern = f"%{like_escape(folded)}%"
+        fields = [
+            _folded_column(Article.name).like(pattern, escape="\\"),
+            _folded_column(Article.brand).like(pattern, escape="\\"),
+            _folded_column(Article.mpn).like(pattern, escape="\\"),
+            _folded_column(Article.keywords).like(pattern, escape="\\"),
+            _folded_column(Article.description).like(pattern, escape="\\"),
+            _folded_column(attribute_values).like(pattern, escape="\\"),
+        ]
+        categories = _categories_matching(db, folded)
+        if categories:
+            fields.append(Article.category_id.in_(categories))
+        clauses.append(or_(*fields))
     return clauses
 
 
@@ -192,7 +222,7 @@ def list_articles(
 ) -> list[Article]:
     stmt: Select[tuple[Article]] = select(Article).where(Article.archived_at.is_(None))
     if q:
-        stmt = stmt.where(*article_text_clause(q))
+        stmt = stmt.where(*article_text_clause(db, q))
     if category_id is not None:
         stmt = stmt.where(Article.category_id == category_id)
     stmt = stmt.order_by(func.lower(Article.name)).limit(limit).offset(offset)

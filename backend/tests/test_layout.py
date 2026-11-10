@@ -181,6 +181,39 @@ def test_search_ignores_case_and_accents(admin_client: TestClient) -> None:
         assert r.status_code == 200 and len(r.json()) == 1, q
 
 
+def test_search_reads_category_names_and_custom_fields(admin_client: TestClient) -> None:
+    parent = admin_client.post(f"{API}/categories", json={"name": "Électronique"}, headers=CSRF).json()
+    cat = admin_client.post(
+        f"{API}/categories", json={"name": "Régulateurs", "parent_id": parent["id"]}, headers=CSRF
+    ).json()
+    field = admin_client.post(
+        f"{API}/categories/{cat['id']}/fields",
+        json={"key": "boitier", "label": "Boîtier", "type": "text"},
+        headers=CSRF,
+    )
+    assert field.status_code == 201, field.text
+    created = admin_client.post(
+        f"{API}/articles",
+        json={"name": "LM317T", "category_id": cat["id"], "attributes": {"boitier": "TO-220 isolé"}},
+        headers=CSRF,
+    )
+    assert created.status_code == 201, created.text
+    admin_client.post(f"{API}/articles", json={"name": "Tournevis"}, headers=CSRF)
+
+    def names(q: str) -> list[str]:
+        r = admin_client.get(f"{API}/articles", params={"q": q})
+        assert r.status_code == 200, r.text
+        return [a["name"] for a in r.json()]
+
+    # Catégorie, catégorie parente, valeur d'un champ (sans accent), et plusieurs mots à la fois.
+    for q in ("regulateur", "electronique", "to-220", "isole", "lm317 regulateur"):
+        assert names(q) == ["LM317T"], q
+    # Le nom d'un champ n'est pas une valeur : « boitier » seul ne trouve rien.
+    assert names("boitier") == []
+    assert names("tournevis") == ["Tournevis"]
+    assert names("regulateur tournevis") == []
+
+
 def test_archive_tree_can_remove_remaining_stock(admin_client: TestClient) -> None:
     article = admin_client.post(f"{API}/articles", json={"name": "ESP32"}, headers=CSRF).json()
     item = _node(admin_client, kind="item", article_id=article["id"], quantity="2")

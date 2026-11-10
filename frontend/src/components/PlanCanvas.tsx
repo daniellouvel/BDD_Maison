@@ -34,7 +34,54 @@ type Op =
   | { kind: "resize"; index: number; handle: Handle; start: { x: number; y: number }; orig: CanvasRect; moved: boolean; result: Result | null }
   | { kind: "draw"; start: { x: number; y: number }; moved: boolean; rect: CanvasRect | null; clickIndex: number };
 
-type Result = CanvasRect & { valid: boolean };
+/** Case voisine entraînée par le bord déplacé : elle partage ce bord avec la case redimensionnée. */
+type Moved = CanvasRect & { index: number };
+type Result = CanvasRect & { valid: boolean; extra: Moved[] };
+
+const EPS = 0.05; // tolérance pour considérer deux bords comme confondus (mm)
+
+/**
+ * Voisins qui partagent un bord de la case redimensionnée : quand ce bord bouge, leur bord commun
+ * suit. Un voisin n'est concerné que s'il touche le bord d'origine sur toute sa portée commune.
+ */
+function edgeFollowers(orig: CanvasRect, rect: CanvasRect, cells: CanvasRect[], skip: number, handle: string): Moved[] {
+  const origRight = orig.x + orig.w;
+  const origBottom = orig.y + orig.h;
+  const newRight = rect.x + rect.w;
+  const newBottom = rect.y + rect.h;
+  const movesLeft = handle.includes("w") && rect.x !== orig.x;
+  const movesRight = handle.includes("e") && newRight !== origRight;
+  const movesTop = handle.startsWith("n") && rect.y !== orig.y;
+  const movesBottom = handle.startsWith("s") && newBottom !== origBottom;
+  const out: Moved[] = [];
+  cells.forEach((c, i) => {
+    if (i === skip) return;
+    const vOverlap = c.y < origBottom - EPS && orig.y < c.y + c.h - EPS;
+    const hOverlap = c.x < origRight - EPS && orig.x < c.x + c.w - EPS;
+    let { x, y, w, h } = c;
+    let changed = false;
+    if (movesLeft && vOverlap && Math.abs(c.x + c.w - orig.x) < EPS) {
+      w = rect.x - c.x;
+      changed = true;
+    }
+    if (movesRight && vOverlap && Math.abs(c.x - origRight) < EPS) {
+      x = newRight;
+      w = c.x + c.w - newRight;
+      changed = true;
+    }
+    if (movesTop && hOverlap && Math.abs(c.y + c.h - orig.y) < EPS) {
+      h = rect.y - c.y;
+      changed = true;
+    }
+    if (movesBottom && hOverlap && Math.abs(c.y - origBottom) < EPS) {
+      y = newBottom;
+      h = c.y + c.h - newBottom;
+      changed = true;
+    }
+    if (changed) out.push({ index: i, x, y, w, h });
+  });
+  return out;
+}
 
 export default function PlanCanvas<T extends CanvasRect>({
   W,
@@ -167,7 +214,7 @@ export default function PlanCanvas<T extends CanvasRect>({
       const x = snapAxis(o.orig.x + dx, w, W, others.flatMap((c) => [c.x, c.x + c.w]), p.tolX);
       const y = snapAxis(o.orig.y + dy, h, H, others.flatMap((c) => [c.y, c.y + c.h]), p.tolY);
       const valid = !others.some((c) => overlaps({ x, y, w, h }, c));
-      o.result = { x, y, w, h, valid };
+      o.result = { x, y, w, h, valid, extra: [] };
       setPreview({ index: o.index, ...o.result });
       return;
     }
@@ -199,8 +246,17 @@ export default function PlanCanvas<T extends CanvasRect>({
         else bottom = top + MIN_SIZE;
       }
       const rect = { x: left, y: top, w: right - left, h: bottom - top };
-      const valid = rect.x >= 0 && rect.y >= 0 && rect.x + rect.w <= W && rect.y + rect.h <= H && !others.some((c) => overlaps(rect, c));
-      o.result = { ...rect, valid };
+      // Les voisins qui partagent le bord déplacé suivent ; chacun doit rester valide.
+      const extra = edgeFollowers(o.orig, rect, cells, o.index, o.handle);
+      const after = cells.map((c, i) => (i === o.index ? rect : (extra.find((e) => e.index === i) ?? c)));
+      const changed = [o.index, ...extra.map((e) => e.index)];
+      const inPlan = (r: CanvasRect) => r.x >= -EPS && r.y >= -EPS && r.x + r.w <= W + EPS && r.y + r.h <= H + EPS;
+      const valid =
+        changed.every((i) => {
+          const r = after[i];
+          return inPlan(r) && r.w >= MIN_SIZE - EPS && r.h >= MIN_SIZE - EPS && after.every((c, j) => j === i || !overlaps(r, c));
+        });
+      o.result = { ...rect, valid, extra };
       setPreview({ index: o.index, ...o.result });
       return;
     }
@@ -233,12 +289,21 @@ export default function PlanCanvas<T extends CanvasRect>({
     if (!o.moved || !o.result) return onSelect(o.index);
     const m = o.result;
     if (!m.valid) return onError("Cette case ne peut pas aller là : elle chevauche une autre case ou sort du plan.");
-    if (m.x === o.orig.x && m.y === o.orig.y && m.w === o.orig.w && m.h === o.orig.h) return;
-    onChange(cells.map((c, i) => (i === o.index ? { ...c, x: m.x, y: m.y, w: m.w, h: m.h } : c)));
+    if (m.x === o.orig.x && m.y === o.orig.y && m.w === o.orig.w && m.h === o.orig.h && m.extra.length === 0) return;
+    const next = cells.map((c, i) => {
+      if (i === o.index) return { ...c, x: m.x, y: m.y, w: m.w, h: m.h };
+      const f = m.extra.find((e) => e.index === i);
+      return f ? { ...c, x: f.x, y: f.y, w: f.w, h: f.h } : c;
+    });
+    onChange(next);
   }
 
   /** Case affichée : position provisoire pendant un déplacement ou un redimensionnement. */
-  const shown = (i: number, c: CanvasRect) => (preview && preview.index === i ? preview : c);
+  const shown = (i: number, c: CanvasRect): CanvasRect => {
+    if (preview && preview.index === i) return preview;
+    const f = preview?.extra.find((e) => e.index === i);
+    return f ?? c;
+  };
 
   return (
     <>

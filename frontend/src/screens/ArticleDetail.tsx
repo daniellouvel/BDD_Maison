@@ -276,8 +276,10 @@ export default function ArticleDetailScreen({ articleId }: { articleId?: string 
             categories={categories}
             onSaved={() => {
               setEditing(false);
+              setError(null);
               load();
             }}
+            onError={setError}
           />
         )}
       </section>
@@ -336,6 +338,18 @@ export default function ArticleDetailScreen({ articleId }: { articleId?: string 
       )}
 
       {error && <p className="error">{error}</p>}
+
+      {edit && (
+        <div className="save-bar card">
+          {/* Après le dernier champ modifiable : enregistre les champs du haut (les photos, liens et PDF s'enregistrent à l'ajout). */}
+          <button type="submit" form="article-edit">
+            Enregistrer
+          </button>
+          <button type="button" className="secondary" onClick={() => setEditing(false)}>
+            Fermer
+          </button>
+        </div>
+      )}
 
       {show("stock") && (
         <section className="card">
@@ -524,10 +538,12 @@ function ArticleEdit({
   article,
   categories,
   onSaved,
+  onError,
 }: {
   article: ArticleDetail;
   categories: Category[];
   onSaved: () => void;
+  onError: (message: string) => void;
 }) {
   const [name, setName] = useState(article.name);
   const [categoryId, setCategoryId] = useState(article.category_id ?? "");
@@ -536,7 +552,6 @@ function ArticleEdit({
   const [description, setDescription] = useState(article.description ?? "");
   const [keywords, setKeywords] = useState(article.keywords ?? "");
   const [minQuantity, setMinQuantity] = useState(article.min_quantity ?? "");
-  const [error, setError] = useState<string | null>(null);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -553,12 +568,12 @@ function ArticleEdit({
       });
       onSaved();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Enregistrement impossible.");
+      onError(err instanceof ApiError ? err.message : "Enregistrement impossible.");
     }
   }
 
   return (
-    <form className="form" onSubmit={submit}>
+    <form id="article-edit" className="form" onSubmit={submit}>
       <label>
         Nom
         <input value={name} onChange={(e) => setName(e.target.value)} required />
@@ -594,8 +609,6 @@ function ArticleEdit({
         Alerte stock faible sous
         <input type="number" step="any" min="0" value={minQuantity} onChange={(e) => setMinQuantity(e.target.value)} />
       </label>
-      {error && <p className="error">{error}</p>}
-      <button type="submit">Enregistrer</button>
     </form>
   );
 }

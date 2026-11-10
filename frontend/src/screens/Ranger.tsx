@@ -73,7 +73,6 @@ export default function Ranger() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!dest) return setError("Choisissez d'abord l'emplacement.");
     if (!existing && !name.trim()) return setError("Donnez un nom à l'objet.");
     setBusy(true);
     setError(null);
@@ -82,7 +81,7 @@ export default function Ranger() {
       if (!article) article = await api.post<Article>("/articles", { name: name.trim() });
       const item = await api.post<{ id: string }>("/nodes", {
         kind: "item",
-        parent_id: dest.id,
+        parent_id: dest?.id ?? null,
         article_id: article.id,
         quantity: quantity || "1",
         unit: unit || null,
@@ -128,7 +127,7 @@ export default function Ranger() {
       <section className="card">
         <h2>1. Où ?</h2>
         {dest && <p className="muted small">{dest.breadcrumb.map((b) => b.name).join(" › ")}</p>}
-        <LocationPicker value={dest} onChange={setDest} emptyLabel="aucun emplacement choisi" />
+        <LocationPicker value={dest} onChange={setDest} emptyLabel="aucun (à ranger plus tard)" />
       </section>
 
       <form className="card form" onSubmit={submit}>
@@ -200,8 +199,8 @@ export default function Ranger() {
         <LabelField value={labelCode} onChange={setLabelCode} />
 
         {error && <p className="error small">{error}</p>}
-        <button type="submit" disabled={busy || !dest}>
-          {busy ? "Rangement…" : "Ranger ici"}
+        <button type="submit" disabled={busy}>
+          {busy ? "Rangement…" : dest ? "Ranger ici" : "Enregistrer sans emplacement"}
         </button>
       </form>
 

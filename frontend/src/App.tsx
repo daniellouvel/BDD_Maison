@@ -66,6 +66,7 @@ function useServerStatus(): ServerStatus {
 
 export default function App() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
   const status = useServerStatus();
 
@@ -142,10 +143,32 @@ export default function App() {
         </NavLink>
         <NavLink to="/ranger">Ranger</NavLink>
         <NavLink to="/scan">Scanner</NavLink>
-        <NavLink to="/categories">Catégories</NavLink>
-        <NavLink to="/qr">Étiquettes</NavLink>
-        <NavLink to="/reglages">Réglages</NavLink>
+        <NavLink to="/achats">Achats</NavLink>
+        <button type="button" className="bottombar-more" onClick={() => setMoreOpen(true)} aria-expanded={moreOpen}>
+          Plus
+        </button>
       </nav>
+      {moreOpen && (
+        <div className="sheet-overlay" onClick={() => setMoreOpen(false)}>
+          <div className="sheet-panel" role="dialog" aria-modal="true" aria-label="Plus" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-grip" />
+            <div className="sheet-head">
+              <strong>Plus</strong>
+              <button type="button" className="secondary" onClick={() => setMoreOpen(false)}>
+                Fermer
+              </button>
+            </div>
+            <nav className="more-list" aria-label="Autres écrans" onClick={() => setMoreOpen(false)}>
+              <NavLink to="/categories">Catégories</NavLink>
+              <NavLink to="/plans">Plans</NavLink>
+              <NavLink to="/fournisseurs">Fournisseurs</NavLink>
+              <NavLink to="/prets">Prêts</NavLink>
+              <NavLink to="/qr">Étiquettes QR</NavLink>
+              <NavLink to="/reglages">Réglages</NavLink>
+            </nav>
+          </div>
+        </div>
+      )}
     </AuthContext.Provider>
   );
 }

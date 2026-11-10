@@ -666,6 +666,8 @@ function MoveBanner({
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Destination scannée, en attente de confirmation : évite de déplacer sur une mauvaise étiquette.
+  const [pending, setPending] = useState<NodeDetail | null>(null);
 
   // Déplace l'objet vers la destination (même règle que le bouton « Déplacer ici »).
   async function moveTo(target: NodeDetail) {
@@ -695,7 +697,7 @@ function MoveBanner({
       if (label.status !== "assigned" || !label.node) {
         return setError(`${code} n'est affectée à aucun emplacement.`);
       }
-      await moveTo(label.node);
+      setPending(label.node);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Lecture impossible.");
     }
@@ -712,6 +714,19 @@ function MoveBanner({
         </button>
       </div>
       {scanning && <Scanner onCode={onCode} hint={busy ? "Déplacement…" : "Scannez l'étiquette de la destination"} />}
+      {pending && (
+        <div className="move-confirm">
+          <p>Déplacer « {moving.name} » vers <strong>{pending.breadcrumb.map((b) => b.name).join(" › ")}</strong> ?</p>
+          <div className="row">
+            <button type="button" disabled={busy} onClick={() => moveTo(pending)}>
+              Confirmer
+            </button>
+            <button type="button" className="secondary" onClick={() => setPending(null)}>
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
       {error && <p className="error small">{error}</p>}
     </div>
   );

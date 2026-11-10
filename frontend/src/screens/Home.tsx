@@ -32,7 +32,7 @@ export default function Home() {
   const changed = () => setTreeKey((k) => k + 1);
 
   return (
-    <div className="explorer">
+    <div className={`explorer${selected && !moving ? " explorer-focus" : ""}`}>
       <div className="explorer-top">
         <Search onPick={select} />
         <span className="muted small">
@@ -71,6 +71,10 @@ export default function Home() {
         </aside>
         <section className="explorer-detail card">
           {selected ? (
+            <>
+            <button type="button" className="phone-back secondary" onClick={() => setParams({})}>
+              ← Tous les emplacements
+            </button>
             <Detail
               id={selected}
               onSelect={select}
@@ -85,6 +89,7 @@ export default function Home() {
                 select(movedId);
               }}
             />
+            </>
           ) : (
             <p className="muted">Choisissez un élément dans l'arbre, ou cherchez-en un en haut.</p>
           )}

@@ -69,6 +69,7 @@ h2 { font-size: 1.05rem; margin: 0 0 0.5rem; }
 
 /* --- Téléphone : actions d'objet au-dessus de la barre d'onglets, feuilles du bas --- */
 .phone-actions { display: none; }
+.phone-back { display: none; }
 .sheet-overlay { position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, 0.35); display: flex; align-items: flex-end; }
 .sheet-panel {
   width: 100%; max-height: 85vh; overflow-y: auto; background: var(--surface);
@@ -95,6 +96,9 @@ h2 { font-size: 1.05rem; margin: 0 0 0.5rem; }
   }
   .fold > .card { margin-top: 0; }
   .fold > .card > h2 { display: none; }
+  /* Un élément ouvert masque l'arbre : on voit la fiche, le contenu et le fil d'Ariane. */
+  .explorer.explorer-focus .explorer-tree { display: none; }
+  .phone-back { display: inline-flex; min-height: 44px; margin-bottom: 0.6rem; }
 }
 
 .card {

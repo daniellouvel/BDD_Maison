@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { NavLink, Route, Routes } from "react-router-dom";
 import { api, ApiError } from "./api";
 import { AuthContext, type AuthState } from "./auth";
+import MobileApp from "./mobile/MobileApp";
+import { readUiChoice, saveUiChoice, usePhone } from "./usePhone";
 import Home from "./screens/Home";
 import Categories from "./screens/Categories";
 import LabelDetail from "./screens/LabelDetail";
@@ -67,6 +69,9 @@ function useServerStatus(): ServerStatus {
 export default function App() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [moreOpen, setMoreOpen] = useState(false);
+  // Sur téléphone, l'interface mobile est le choix par défaut ; l'interface classique reste disponible.
+  const phone = usePhone();
+  const [ui, setUi] = useState(readUiChoice);
   const [bootError, setBootError] = useState<string | null>(null);
   const status = useServerStatus();
 
@@ -92,6 +97,20 @@ export default function App() {
       setUser(null);
     },
   };
+
+  if (phone && ui === "mobile") {
+    return (
+      <AuthContext.Provider value={auth}>
+        <MobileApp
+          statusLabel={status === "online" ? null : STATUS_LABEL[status]}
+          onClassic={() => {
+            saveUiChoice("classic");
+            setUi("classic");
+          }}
+        />
+      </AuthContext.Provider>
+    );
+  }
 
   return (
     <AuthContext.Provider value={auth}>
@@ -166,6 +185,18 @@ export default function App() {
               <NavLink to="/qr">Étiquettes QR</NavLink>
               <NavLink to="/reglages">Réglages</NavLink>
             </nav>
+            <button
+              type="button"
+              className="secondary"
+              style={{ width: "100%", marginTop: "0.8rem" }}
+              onClick={() => {
+                saveUiChoice("mobile");
+                setUi("mobile");
+                setMoreOpen(false);
+              }}
+            >
+              Passer à l'interface mobile
+            </button>
           </div>
         </div>
       )}

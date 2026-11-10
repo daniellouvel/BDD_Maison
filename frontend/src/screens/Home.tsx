@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
 import LabelField from "../components/LabelField";
@@ -289,6 +289,7 @@ function Detail({
   onChanged: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const navigate = useNavigate();
 
   async function confirmMove(target: NodeDetail) {
     if (!moving) return;
@@ -405,6 +406,11 @@ function Detail({
           {canHaveChildren && (
             <button type="button" onClick={() => setPanel(panel === "add" ? "none" : "add")}>
               Ajouter ici
+            </button>
+          )}
+          {canHaveChildren && (
+            <button type="button" className="secondary" onClick={() => navigate(`/ranger?to=${node.id}`)}>
+              Ranger ici
             </button>
           )}
           <button

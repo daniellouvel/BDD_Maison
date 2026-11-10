@@ -6,6 +6,7 @@ import Home from "./screens/Home";
 import LabelDetail from "./screens/LabelDetail";
 import Login from "./screens/Login";
 import QrManager from "./screens/QrManager";
+import Ranger from "./screens/Ranger";
 import Scan from "./screens/Scan";
 import { Navigate, useParams } from "react-router-dom";
 
@@ -94,6 +95,7 @@ export default function App() {
       <main className="content">
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/ranger" element={<Ranger />} />
           <Route path="/scan" element={<Scan />} />
           <Route path="/qr" element={<QrManager />} />
           <Route path="/qr/labels/:code" element={<LabelDetail />} />
@@ -108,8 +110,17 @@ export default function App() {
         <NavLink to="/" end>
           Accueil
         </NavLink>
+        <NavLink to="/ranger">Ranger</NavLink>
         <NavLink to="/scan">Scanner</NavLink>
         <NavLink to="/qr">Étiquettes QR</NavLink>
+      </nav>
+      <nav className="bottombar" aria-label="Navigation">
+        <NavLink to="/" end>
+          Accueil
+        </NavLink>
+        <NavLink to="/ranger">Ranger</NavLink>
+        <NavLink to="/scan">Scanner</NavLink>
+        <NavLink to="/qr">Étiquettes</NavLink>
       </nav>
     </AuthContext.Provider>
   );

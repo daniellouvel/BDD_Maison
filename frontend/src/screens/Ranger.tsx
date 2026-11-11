@@ -40,6 +40,31 @@ export default function Ranger() {
   const [stored, setStored] = useState<Stored[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Objet reconnu par son étiquette : on le range tel quel, sans redemander son nom.
+  const [scanned, setScanned] = useState<NodeDetail | null>(null);
+
+  // Une étiquette déjà affectée à un objet, scannée dans le champ « Étiquette » : c'est cet objet
+  // qu'on range. On ne regarde que les codes complets, pas ceux en cours de frappe.
+  useEffect(() => {
+    const raw = labelCode.trim();
+    if (!/^QR-\d{6}$/i.test(raw)) return;
+    let cancelled = false;
+    fetchLabel(raw.toUpperCase())
+      .then((label) => {
+        if (cancelled || label.status !== "assigned" || !label.node) return;
+        if (label.node.kind === "item") {
+          setScanned(label.node);
+          setLabelCode("");
+          setError(null);
+        } else {
+          setError(`${label.code} est l'étiquette d'un emplacement ou d'un contenant, pas d'un objet.`);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [labelCode]);
 
   // Arrivée depuis « Ranger ici » : l'emplacement est déjà connu.
   const to = params.get("to");
@@ -156,7 +181,14 @@ export default function Ranger() {
       </section>
 
 
-      <ExistingItem dest={dest} onDone={() => {}} />
+      <ExistingItem
+        dest={dest}
+        item={scanned}
+        onItem={setScanned}
+        onDone={(placed) => setStored((s) => [placed, ...s])}
+      />
+      {/* Objet reconnu par son étiquette : le formulaire « nouvel objet » n'a pas lieu d'être. */}
+      {!scanned && (
       <form className="card form" onSubmit={submit}>
         <h2>2. Quoi ?</h2>
         <label className="filebutton">
@@ -243,6 +275,7 @@ export default function Ranger() {
           {busy ? "Rangement…" : dest ? "Ranger ici" : "Enregistrer sans emplacement"}
         </button>
       </form>
+      )}
 
       {stored.length > 0 && (
         <section className="card">
@@ -267,9 +300,19 @@ export default function Ranger() {
  * Objet déjà existant : on scanne son étiquette. S'il n'a pas de place, on le range à l'emplacement
  * choisi ; s'il est déjà rangé, on le déplace vers cet emplacement (après confirmation).
  */
-function ExistingItem({ dest, onDone }: { dest: NodeDetail | null; onDone: () => void }) {
+function ExistingItem({
+  dest,
+  item,
+  onItem,
+  onDone,
+}: {
+  dest: NodeDetail | null;
+  item: NodeDetail | null;
+  onItem: (item: NodeDetail | null) => void;
+  onDone: (placed: Stored) => void;
+}) {
   const [open, setOpen] = useState(false);
-  const [item, setItem] = useState<NodeDetail | null>(null);
+  const setItem = onItem;
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -301,8 +344,8 @@ function ExistingItem({ dest, onDone }: { dest: NodeDetail | null; onDone: () =>
     try {
       await api.patch(`/nodes/${item.id}`, { version: item.version, parent_id: dest.id });
       setMessage(`« ${item.name ?? item.article_name} » ${item.parent_id ? "déplacé" : "rangé"} dans ${dest.name ?? dest.article_name}.`);
+      onDone({ name: item.name ?? item.article_name ?? "Objet", quantity: item.quantity ?? "1", unit: item.unit ?? "" });
       setItem(null);
-      onDone();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Rangement impossible.");
     } finally {
@@ -314,7 +357,7 @@ function ExistingItem({ dest, onDone }: { dest: NodeDetail | null; onDone: () =>
 
   return (
     <section className="card">
-      <h2>Objet déjà existant ?</h2>
+      <h2>{item ? "Objet reconnu" : "Objet déjà existant ?"}</h2>
       {!item && (
         <>
           <button type="button" className="secondary" onClick={() => setOpen(!open)}>
@@ -336,7 +379,7 @@ function ExistingItem({ dest, onDone }: { dest: NodeDetail | null; onDone: () =>
                 {item.breadcrumb.length > 1 ? "Déplacer" : "Ranger"} dans « {dest.name ?? dest.article_name} »
               </button>
               <button type="button" className="secondary" onClick={() => setItem(null)}>
-                Annuler
+                Ce n'est pas cet objet
               </button>
             </div>
           ) : (

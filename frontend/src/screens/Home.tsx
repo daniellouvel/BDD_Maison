@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
 import PhoneActions from "../components/PhoneActions";
+import QuantityBar from "../components/QuantityBar";
 import PlanPreview from "../components/PlanPreview";
 import LabelField from "../components/LabelField";
 import ArticleDetailScreen from "./ArticleDetail";
@@ -431,6 +432,17 @@ function Detail({
         {node.qr_code ? ` · étiquette ${node.qr_code}` : ""}
       </p>
 
+      {/* Quantité du lot juste sous le titre : − / + et « Autre quantité… ». */}
+      {canWrite && !moving && node.kind === "item" && (node.status ?? "in_stock") === "in_stock" && (
+        <QuantityBar
+          node={node}
+          onDone={() => {
+            load();
+            onChanged();
+          }}
+        />
+      )}
+
       {moving && moving.id === node.id && (
         <div className="move-target card">
           <strong>C'est l'élément à déplacer.</strong>
@@ -525,7 +537,8 @@ function Detail({
       {node.kind === "item" && node.article_id && !moving && (
         <div className="article-sheet">
           {/* Fiche complète de l'article : infos, catégorie, champs, photos, documents, liens. */}
-          <ArticleDetailScreen articleId={node.article_id} />
+          {/* La clé suit la version du lot : le stock total se recharge après chaque mouvement. */}
+          <ArticleDetailScreen key={`${node.id}-${node.version}`} articleId={node.article_id} />
         </div>
       )}
 

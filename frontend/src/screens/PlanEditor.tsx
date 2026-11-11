@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
+import GridForm, { type GridRect } from "../components/GridForm";
 import PlanCanvas, { type CanvasRect } from "../components/PlanCanvas";
 import { MIN_SIZE, round1 } from "../components/planGeometry";
 import type { BoxCell, BoxLayout, Node, NodeDetail, NodeType, PlanModel } from "../types";
@@ -213,6 +214,30 @@ export default function PlanEditor() {
     }, "Ajout de la case impossible.");
   }
 
+  /**
+   * Grille de cases : un contenant est créé pour chaque case (« Case 1 », « Case 2 »…), puis le plan
+   * est enregistré une seule fois. Réservé à un étage sans case : remplacer des cases existantes
+   * archiverait leurs contenants, ce qui doit rester une décision case par case.
+   */
+  async function generateGrid(rects: GridRect[], prefix: string) {
+    const levelId = level.node_id;
+    const parentId = levelId ?? box?.id;
+    if (!parentId) return;
+    await run(async () => {
+      const created: BoxCell[] = [];
+      try {
+        for (let i = 0; i < rects.length; i++) {
+          const child = await api.post<NodeDetail>("/nodes", { kind: "container", name: `${prefix} ${i + 1}`, parent_id: parentId });
+          created.push({ node_id: child.id, ...rects[i] });
+        }
+      } finally {
+        // Même si la création s'interrompt, les cases déjà créées sont posées sur le plan.
+        if (created.length > 0) await save(withCells(levelId, (list) => [...list, ...created]));
+      }
+      setSelected(null);
+    }, "Création de la grille impossible.");
+  }
+
   async function removeCell(index: number) {
     const cell = cells[index];
     if (!cell) return;
@@ -397,6 +422,14 @@ export default function PlanEditor() {
                 : "Lecture seule"}
             </span>
           </div>
+
+          {canWrite && (
+            cells.length === 0 ? (
+              <GridForm W={W} H={H} existing={0} busy={busy} onGenerate={generateGrid} />
+            ) : (
+              <p className="muted small">Pour générer une grille, l'étage doit être vide : retirez d'abord ses cases.</p>
+            )
+          )}
 
           <PlanCanvas<BoxCell>
             W={W}

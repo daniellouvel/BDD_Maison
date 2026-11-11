@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../api";
+import GridForm from "../components/GridForm";
 import PlanCanvas, { type CanvasRect } from "../components/PlanCanvas";
 import { MIN_SIZE } from "../components/planGeometry";
 import type { PlanCell, PlanModel } from "../types";
@@ -267,6 +268,15 @@ export default function PlanModelEditor() {
         </aside>
 
         <section className="card plan-main">
+          <GridForm
+            W={W}
+            H={H}
+            existing={cells.length}
+            onGenerate={(rects) => {
+              setCells(() => rects.map((r) => ({ name: null, ...r })));
+              setSelected(null);
+            }}
+          />
           <PlanCanvas<PlanCell>
             W={W}
             H={H}

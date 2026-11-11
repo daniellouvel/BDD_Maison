@@ -84,10 +84,29 @@ def has_active_children(db: Session, node: Node) -> bool:
     return bool(count)
 
 
+def natural_key(text: str) -> list[tuple[int, int | str]]:
+    """Clé de tri « naturelle » : « Case 2 » passe avant « Case 10 », sans tenir compte de la casse ni des accents."""
+    folded = unicodedata.normalize("NFKD", text).casefold()
+    folded = "".join(c for c in folded if not unicodedata.combining(c))
+    return [(0, int(part)) if part.isdigit() else (1, part) for part in re.split(r"(\d+)", folded) if part]
+
+
 def children(db: Session, parent_id: uuid.UUID | None) -> list[Node]:
+    """Éléments d'un niveau : contenants, objets, puis emplacements ; chaque groupe dans l'ordre naturel des noms."""
     stmt = select(Node).where(Node.archived_at.is_(None))
     stmt = stmt.where(Node.parent_id.is_(None) if parent_id is None else Node.parent_id == parent_id)
-    return list(db.scalars(stmt.order_by(Node.kind, Node.name, Node.created_at)))
+    nodes = list(db.scalars(stmt))
+    # Un objet sans nom porte celui de son article. Les noms d'articles sont lus en une seule requête.
+    article_ids = {n.article_id for n in nodes if n.article_id is not None and not n.name}
+    names = (
+        dict(db.execute(select(Article.id, Article.name).where(Article.id.in_(article_ids))).all()) if article_ids else {}
+    )
+
+    def key(node: Node):  # type: ignore[no-untyped-def]
+        text = node.name or names.get(node.article_id, "")
+        return (node.kind, natural_key(text), node.created_at)
+
+    return sorted(nodes, key=key)
 
 
 def detail(db: Session, node: Node) -> NodeDetail:

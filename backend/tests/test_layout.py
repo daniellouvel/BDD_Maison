@@ -214,6 +214,15 @@ def test_search_reads_category_names_and_custom_fields(admin_client: TestClient)
     assert names("regulateur tournevis") == []
 
 
+def test_children_are_listed_in_natural_order(admin_client: TestClient) -> None:
+    parent = admin_client.post(f"{API}/nodes", json={"kind": "container", "name": "Boîte"}, headers=CSRF).json()
+    for name in ("Case 10", "Case 2", "Case 1", "Case 11", "case 3", "Étage 2", "Étage 10"):
+        r = admin_client.post(f"{API}/nodes", json={"kind": "container", "name": name, "parent_id": parent["id"]}, headers=CSRF)
+        assert r.status_code == 201, r.text
+    listed = [n["name"] for n in admin_client.get(f"{API}/nodes", params={"parent_id": parent["id"]}).json()]
+    assert listed == ["Case 1", "Case 2", "case 3", "Case 10", "Case 11", "Étage 2", "Étage 10"]
+
+
 def test_archive_tree_can_remove_remaining_stock(admin_client: TestClient) -> None:
     article = admin_client.post(f"{API}/articles", json={"name": "ESP32"}, headers=CSRF).json()
     item = _node(admin_client, kind="item", article_id=article["id"], quantity="2")

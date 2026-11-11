@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
+import ItemLocation from "../components/ItemLocation";
 import PhoneActions from "../components/PhoneActions";
 import QuantityBar from "../components/QuantityBar";
 import PlanPreview from "../components/PlanPreview";
@@ -522,6 +523,9 @@ function Detail({
           }}
         />
       )}
+
+      {/* Où est-il ? Le plan de la boîte, avec la case de l'élément en surbrillance (cliquable). */}
+      {!moving && <ItemLocation key={node.id} node={node} onSelect={onSelect} />}
 
       {node && !moving && (
         <PhoneActions

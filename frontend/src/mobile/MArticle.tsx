@@ -3,13 +3,15 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
 import LocationPicker from "../components/LocationPicker";
+import { useLocation } from "../components/ItemLocation";
 import { LotActions } from "../components/LotStatus";
+import PlanView from "../components/PlanView";
 import ArticleDetailScreen from "../screens/ArticleDetail";
 import type { ArticleDetail, LocationRef, NodeDetail } from "../types";
 import { LabelSheet } from "./MNode";
 import { MHeader, Segmented, Sheet } from "./ui";
 
-type Tab = "stock" | "fiche";
+type Tab = "stock" | "plan" | "fiche";
 type SheetName = "take" | "lend" | "move" | "label" | null;
 
 /**
@@ -29,6 +31,8 @@ export default function MArticle() {
   const navigate = useNavigate();
   // Code de l'étiquette du lot choisi (null : aucune). Chargé à part : la liste des lots ne le donne pas.
   const [labelCode, setLabelCode] = useState<string | null>(null);
+  // Fiche complète du lot choisi : sert à situer le lot sur le plan de sa boîte.
+  const [lotNode, setLotNode] = useState<NodeDetail | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -48,12 +52,21 @@ export default function MArticle() {
   const lot: LocationRef | null = lots.find((l) => l.node_id === selected) ?? lots[0] ?? null;
 
   const lotId = lot?.node_id ?? null;
+  const location = useLocation(lotNode);
+  // Le lot choisi n'est dans aucun plan : on quitte l'onglet Plan.
+  useEffect(() => {
+    if (tab === "plan" && !location) setTab("stock");
+  }, [tab, location]);
   const loadLabel = useCallback(() => {
     setLabelCode(null);
+    setLotNode(null);
     if (!lotId) return;
     api
       .get<NodeDetail>(`/nodes/${lotId}`)
-      .then((n) => setLabelCode(n.qr_code))
+      .then((n) => {
+        setLabelCode(n.qr_code);
+        setLotNode(n);
+      })
       .catch(() => setLabelCode(null));
   }, [lotId]);
   useEffect(loadLabel, [loadLabel]);
@@ -94,11 +107,12 @@ export default function MArticle() {
         onChange={setTab}
         options={[
           { value: "stock", label: `Lots (${lots.length})` },
-          { value: "fiche", label: "Fiche complète" },
+          ...(location ? [{ value: "plan" as Tab, label: "Plan" }] : []),
+          { value: "fiche", label: "Fiche" },
         ]}
       />
 
-      <div className={`m-body${tab === "fiche" ? " m-pad m-notitle" : ""}`}>
+      <div className={`m-body${tab === "fiche" ? " m-pad m-notitle" : tab === "plan" ? " m-pad" : ""}`}>
         {error && <p className="error m-pad">{error}</p>}
         {!article && !error && <p className="m-empty">Chargement…</p>}
 
@@ -137,6 +151,15 @@ export default function MArticle() {
               ))}
             </ul>
             {lots.length > 1 && <p className="m-group">Touchez un lot pour le choisir, puis une action en bas.</p>}
+          </>
+        )}
+
+        {article && tab === "plan" && location && (
+          <>
+            <p className="muted small" style={{ margin: "0 0 0.5rem" }}>
+              Rangé dans <strong>« {location.names[location.cell] ?? "cette case"} »</strong> · {location.boxName}
+            </p>
+            <PlanView layout={location.layout} names={location.names} highlight={[location.cell]} initialLevel={location.level} />
           </>
         )}
 

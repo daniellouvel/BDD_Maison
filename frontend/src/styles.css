@@ -210,6 +210,14 @@ pre.ocr { white-space: pre-wrap; word-break: break-word; font-size: 0.8rem; back
 label.checkbox { display: flex; align-items: center; gap: 0.5rem; }
 label.checkbox input { width: auto; }
 
+/* Générateur de grille de cases (éditeurs de plan) */
+.grid-form { margin-bottom: 0.8rem; }
+.grid-form > summary {
+  cursor: pointer; display: inline-block; font-weight: 600; color: var(--accent);
+  border: 1px solid var(--accent); border-radius: 8px; padding: 0.5rem 0.8rem; margin-bottom: 0.6rem;
+}
+.grid-form[open] > summary { background: rgba(180, 83, 9, 0.08); }
+
 /* Plan d'une boîte : SVG à l'échelle (mm), une case = un rectangle cliquable */
 .plan { display: block; width: 100%; max-width: 640px; height: auto; margin: 0.5rem 0; touch-action: none; user-select: none; }
 .plan .plan-cell { cursor: pointer; }

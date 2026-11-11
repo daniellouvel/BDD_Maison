@@ -295,7 +295,7 @@ export default function PlanModelEditor() {
           />
           <p className="muted small">
             {W} × {H} mm · {current.name}
-            {cells.length === 0 && " · vide : tracez une case, ou ajoutez un étage"}
+            {cells.length === 0 && " · vide : générez une grille ci-dessus, ou tracez une case, ou ajoutez un étage"}
           </p>
         </section>
 

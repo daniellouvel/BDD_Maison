@@ -457,7 +457,7 @@ export default function PlanEditor() {
 
           <p className="muted small">
             {W} × {H} mm · {level.name}
-            {cells.length === 0 && " · vide : tracez une case, ou affectez un modèle"}
+            {cells.length === 0 && " · vide : générez une grille ci-dessus, tracez une case, ou affectez un modèle"}
           </p>
           {legendTypes.length > 0 && (
             <div className="plan-legend">

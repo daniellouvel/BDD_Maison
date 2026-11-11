@@ -44,8 +44,9 @@ export default function GridForm({
   }
 
   return (
-    <details className="grid-form">
-      <summary>Générer une grille de cases</summary>
+    // Ouvert tant que l'étage est vide : c'est là qu'on définit ses cases. Replié ensuite pour ne pas gêner.
+    <details className="grid-form" open={existing === 0 ? true : undefined}>
+      <summary>Définir les cases : générer une grille (colonnes × rangées)</summary>
       <div className="plan-toolbar">
         <label>
           Colonnes

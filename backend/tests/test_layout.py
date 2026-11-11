@@ -223,6 +223,27 @@ def test_children_are_listed_in_natural_order(admin_client: TestClient) -> None:
     assert listed == ["Case 1", "Case 2", "case 3", "Case 10", "Case 11", "Étage 2", "Étage 10"]
 
 
+def test_unit_cannot_be_a_bare_number(admin_client: TestClient) -> None:
+    article = admin_client.post(f"{API}/articles", json={"name": "AS5600"}, headers=CSRF).json()
+    body = {"kind": "item", "article_id": article["id"], "quantity": "1"}
+
+    refused = admin_client.post(f"{API}/nodes", json={**body, "unit": "1"}, headers=CSRF)
+    assert refused.status_code == 422 and refused.json()["code"] == "invalid_unit"
+    assert admin_client.post(f"{API}/nodes", json={**body, "unit": " 12,5 "}, headers=CSRF).status_code == 422
+
+    item = admin_client.post(f"{API}/nodes", json={**body, "unit": "pcs"}, headers=CSRF)
+    assert item.status_code == 201, item.text
+    node = item.json()
+
+    bad = admin_client.patch(f"{API}/nodes/{node['id']}", json={"version": node["version"], "unit": "3"}, headers=CSRF)
+    assert bad.status_code == 422 and bad.json()["code"] == "invalid_unit"
+    # Effacer l'unité reste possible, et une unité avec chiffres et lettres aussi (« 5 mm »).
+    cleared = admin_client.patch(f"{API}/nodes/{node['id']}", json={"version": node["version"], "unit": None}, headers=CSRF)
+    assert cleared.status_code == 200 and cleared.json()["unit"] is None
+    mm = admin_client.patch(f"{API}/nodes/{node['id']}", json={"version": cleared.json()["version"], "unit": "5 mm"}, headers=CSRF)
+    assert mm.status_code == 200 and mm.json()["unit"] == "5 mm"
+
+
 def test_archive_tree_can_remove_remaining_stock(admin_client: TestClient) -> None:
     article = admin_client.post(f"{API}/articles", json={"name": "ESP32"}, headers=CSRF).json()
     item = _node(admin_client, kind="item", article_id=article["id"], quantity="2")

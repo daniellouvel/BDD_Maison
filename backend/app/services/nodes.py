@@ -84,6 +84,16 @@ def has_active_children(db: Session, node: Node) -> bool:
     return bool(count)
 
 
+def check_unit(unit: str | None) -> None:
+    """Une unité est un mot (pcs, g, m…) : un nombre seul est presque toujours une quantité saisie au mauvais endroit."""
+    if unit and re.fullmatch(r"[\d\s.,]+", unit):
+        raise ApiError(
+            422,
+            "invalid_unit",
+            "L'unité ne peut pas être un nombre : la quantité se saisit dans le champ « Quantité ». Laissez l'unité vide ou écrivez par exemple « pcs ».",
+        )
+
+
 def natural_key(text: str) -> list[tuple[int, int | str]]:
     """Clé de tri « naturelle » : « Case 2 » passe avant « Case 10 », sans tenir compte de la casse ni des accents."""
     folded = unicodedata.normalize("NFKD", text).casefold()
@@ -145,6 +155,7 @@ def detail(db: Session, node: Node) -> NodeDetail:
 
 
 def create(db: Session, data: NodeIn, actor: User) -> Node:
+    check_unit(data.unit)
     if data.kind in ("location", "container"):
         if not data.name:
             raise ApiError(422, "name_required", "Un emplacement ou un contenant doit avoir un nom.")
@@ -217,6 +228,7 @@ def patch(db: Session, node: Node, data: NodePatch, actor: User) -> Node:
     if "notes" in fields:
         node.notes = data.notes
     if "unit" in fields:
+        check_unit(data.unit)
         if node.kind != "item" and data.unit:
             raise ApiError(422, "invalid_fields", "L'unité ne concerne que les objets.")
         node.unit = data.unit

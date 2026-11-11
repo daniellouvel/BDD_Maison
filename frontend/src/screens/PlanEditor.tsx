@@ -385,6 +385,13 @@ export default function PlanEditor() {
             </div>
           )}
 
+          {canWrite &&
+            (cells.length === 0 ? (
+              <GridForm W={W} H={H} existing={0} busy={busy} onGenerate={generateGrid} />
+            ) : (
+              <p className="muted small">Pour générer une grille, l'étage doit être vide : retirez d'abord ses cases.</p>
+            ))}
+
           <h3>Non placés</h3>
           {free.length === 0 && <p className="muted small">Aucun contenant en attente.</p>}
           <ul className="list">
@@ -423,14 +430,6 @@ export default function PlanEditor() {
             </span>
           </div>
 
-          {canWrite && (
-            cells.length === 0 ? (
-              <GridForm W={W} H={H} existing={0} busy={busy} onGenerate={generateGrid} />
-            ) : (
-              <p className="muted small">Pour générer une grille, l'étage doit être vide : retirez d'abord ses cases.</p>
-            )
-          )}
-
           <PlanCanvas<BoxCell>
             W={W}
             H={H}
@@ -457,7 +456,7 @@ export default function PlanEditor() {
 
           <p className="muted small">
             {W} × {H} mm · {level.name}
-            {cells.length === 0 && " · vide : générez une grille ci-dessus, tracez une case, ou affectez un modèle"}
+            {cells.length === 0 && " · vide : générez une grille (colonne de gauche), tracez une case, ou affectez un modèle"}
           </p>
           {legendTypes.length > 0 && (
             <div className="plan-legend">

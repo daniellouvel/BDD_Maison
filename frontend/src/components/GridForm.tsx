@@ -46,7 +46,7 @@ export default function GridForm({
   return (
     // Ouvert tant que l'étage est vide : c'est là qu'on définit ses cases. Replié ensuite pour ne pas gêner.
     <details className="grid-form" open={existing === 0 ? true : undefined}>
-      <summary>Définir les cases : générer une grille (colonnes × rangées)</summary>
+      <summary>Définir les cases (grille)</summary>
       <div className="plan-toolbar">
         <label>
           Colonnes
@@ -71,12 +71,12 @@ export default function GridForm({
         <button type="button" disabled={busy || !rects || tooMany} onClick={generate}>
           {rects ? `Générer ${rects.length} cases` : "Générer"}
         </button>
+        <span className="muted small">
+          {rects
+            ? `Cases de ${fmt(rects[0].w)} × ${fmt(rects[0].h)} mm dans ${W} × ${H} mm`
+            : "Cette grille ne tient pas dans le plan (cases de moins de 10 mm ?)."}
+        </span>
       </div>
-      <p className="muted small">
-        {rects
-          ? `${c} colonne(s) × ${r} rangée(s) : cases de ${fmt(rects[0].w)} × ${fmt(rects[0].h)} mm dans un plan de ${W} × ${H} mm.`
-          : "Cette grille ne tient pas dans le plan (cases de moins de 10 mm ?)."}
-      </p>
       {error && <p className="error small">{error}</p>}
     </details>
   );

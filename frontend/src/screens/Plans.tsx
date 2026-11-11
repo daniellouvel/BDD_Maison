@@ -93,6 +93,17 @@ export default function Plans() {
     }
   }
 
+  async function removeModel(plan: PlanModel) {
+    if (!window.confirm(`Supprimer le modèle « ${plan.name} » ? Les contenants déjà affectés gardent leur plan.`)) return;
+    setError(null);
+    try {
+      await api.del(`/plans/${plan.id}`);
+      setPlans((list) => (list ? list.filter((p) => p.id !== plan.id) : list));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Suppression impossible.");
+    }
+  }
+
   useEffect(() => {
     api
       .get<PlanModel[]>("/plans")
@@ -181,6 +192,14 @@ export default function Plans() {
                 <span className="muted small">
                   {p.width_mm} × {p.height_mm} mm · {p.levels.length} étage(s) · {cells} case(s)
                 </span>
+                {canWrite && (
+                  <>
+                    {" "}
+                    <button type="button" className="linklike danger" onClick={() => removeModel(p)}>
+                      Supprimer
+                    </button>
+                  </>
+                )}
               </li>
             );
           })}

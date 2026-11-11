@@ -232,7 +232,7 @@ label.checkbox input { width: auto; }
 .plan-screen { display: grid; gap: 1rem; }
 .plan-screen { grid-template-columns: minmax(0, 1fr); }
 /* Colonnes latérales à la hauteur de l'écran : elles défilent elles-mêmes, pas la page. */
-.plan-screen > aside { max-height: calc(100vh - 170px); overflow: auto; }
+.plan-screen > aside { max-height: calc(100vh - 240px); overflow: auto; }
 @media (min-width: 820px) {
   .content:has(> .plan-page) { max-width: none; margin-right: 1rem; padding: 0.5rem 1rem 0.5rem 0; }
   .plan-screen { align-items: start; }
@@ -241,6 +241,8 @@ label.checkbox input { width: auto; }
   .plan-screen > aside:first-child { grid-column: 2; grid-row: 1; }
   .plan-main { grid-column: 1; grid-row: 1 / span 2; }
   .plan-side { grid-column: 2; grid-row: 2; }
+  /* Deux blocs empilés à droite : chacun prend la moitié de la hauteur, la page ne défile pas. */
+  .plan-screen > aside { max-height: calc((100vh - 260px) / 2); }
 }
 @media (min-width: 1200px) {
   /* Grand écran : étages à gauche, plan au centre, inspecteur à droite. */
@@ -250,7 +252,7 @@ label.checkbox input { width: auto; }
 .plan-main { min-width: 0; }
 @media (min-width: 1200px) {
   /* Colonnes latérales à la hauteur de l'écran : elles défilent elles-mêmes, pas la page. */
-  .plan-screen > aside { max-height: calc(100vh - 170px); overflow: auto; }
+  .plan-screen > aside { max-height: calc(100vh - 240px); overflow: auto; }
 }
 .plan-toolbar { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: flex-end; margin-bottom: 0.6rem; }
 .plan-toolbar label { display: grid; gap: 0.2rem; }
@@ -414,3 +416,18 @@ label.checkbox input { width: auto; }
   .content-list .linklike { display: inline-flex; align-items: center; min-height: 48px; margin-left: 0; text-decoration: none; font-size: 1rem; }
   .card.form input:not([type="checkbox"]):not([type="radio"]), .card.form select { width: 100%; }
 }
+
+/* Générateur de grille : rangée compacte pour laisser la place au plan */
+.grid-form .plan-toolbar { margin-bottom: 0.3rem; gap: 0.5rem; }
+.grid-form .plan-toolbar input { width: 5.2rem; min-height: 38px; padding: 0.3rem 0.5rem; }
+.grid-form .plan-toolbar label { font-size: 0.8rem; }
+.grid-form .plan-toolbar button { min-height: 38px; }
+.plan-head { flex-wrap: wrap; }
+
+/* Dans la colonne de gauche, le générateur s'empile : deux champs par ligne, bouton pleine largeur */
+.plan-screen > aside .grid-form { margin-top: 0.8rem; }
+.plan-screen > aside .grid-form > summary { display: block; text-align: center; }
+.plan-screen > aside .grid-form .plan-toolbar { display: grid; grid-template-columns: 1fr 1fr; align-items: end; }
+.plan-screen > aside .grid-form .plan-toolbar > label:last-of-type { grid-column: 1 / -1; }
+.plan-screen > aside .grid-form .plan-toolbar input { width: 100%; }
+.plan-screen > aside .grid-form .plan-toolbar button, .plan-screen > aside .grid-form .plan-toolbar > span { grid-column: 1 / -1; }

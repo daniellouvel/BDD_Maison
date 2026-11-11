@@ -197,6 +197,9 @@ export default function PlanModelEditor() {
         </button>
         <h1>Modèle : {saved?.name}</h1>
         <span className="muted small">{dirty ? "Modifications non enregistrées" : "Enregistré"}</span>
+        <button type="button" className="secondary danger" onClick={archive}>
+          Supprimer ce modèle
+        </button>
       </div>
 
       <div className="plan-toolbar">
@@ -265,9 +268,6 @@ export default function PlanModelEditor() {
               + Ajouter un étage
             </button>
           </div>
-        </aside>
-
-        <section className="card plan-main">
           <GridForm
             W={W}
             H={H}
@@ -277,6 +277,9 @@ export default function PlanModelEditor() {
               setSelected(null);
             }}
           />
+        </aside>
+
+        <section className="card plan-main">
           <PlanCanvas<PlanCell>
             W={W}
             H={H}
@@ -295,7 +298,7 @@ export default function PlanModelEditor() {
           />
           <p className="muted small">
             {W} × {H} mm · {current.name}
-            {cells.length === 0 && " · vide : générez une grille ci-dessus, ou tracez une case, ou ajoutez un étage"}
+            {cells.length === 0 && " · vide : générez une grille (colonne de gauche), ou tracez une case, ou ajoutez un étage"}
           </p>
         </section>
 
@@ -342,9 +345,6 @@ export default function PlanModelEditor() {
                 <li>Glissez l'intérieur d'une case pour la déplacer, ses poignées pour la redimensionner.</li>
                 <li>Les modifications ne sont enregistrées qu'avec « Enregistrer le modèle ».</li>
               </ul>
-              <button type="button" className="secondary danger" onClick={archive}>
-                Supprimer ce modèle
-              </button>
             </>
           )}
         </aside>

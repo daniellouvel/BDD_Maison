@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent } from "react";
+import { useLayoutEffect, useRef, useState, type PointerEvent } from "react";
 import { MIN_SIZE, SNAP, attach, clamp, round1, snapAxis } from "./planGeometry";
 
 /**
@@ -212,6 +212,26 @@ export default function PlanCanvas<T extends CanvasRect>({
   onOpen?: (index: number) => void;
 }) {
   const surface = useRef<SVGSVGElement>(null);
+  // Hauteur laissée au plan sous tout ce qui le précède : il tient dans l'écran sans faire défiler la page.
+  const [avail, setAvail] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = surface.current;
+    if (!el) return;
+    const measure = () => {
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      // 120 px sous le plan : ligne d'information, légende, marges de la carte et de la page.
+      setAvail(Math.max(220, Math.floor(window.innerHeight - top - 120)));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    // Le contenu au-dessus du plan change de hauteur (formulaire de grille replié ou déplié, messages).
+    const observer = new ResizeObserver(measure);
+    if (el.parentElement) observer.observe(el.parentElement);
+    return () => {
+      window.removeEventListener("resize", measure);
+      observer.disconnect();
+    };
+  }, []);
   const op = useRef<Op | null>(null);
   const [preview, setPreview] = useState<(Result & { index: number }) | null>(null);
   const [drawing, setDrawing] = useState<CanvasRect | null>(null);
@@ -416,7 +436,10 @@ export default function PlanCanvas<T extends CanvasRect>({
         ref={surface}
         className="plan-svg"
         // Le plan tient dans la hauteur de l'écran (sans défiler) : largeur bornée selon son format.
-        style={{ width: `min(100%, max(360px, calc((100vh - 260px) * ${((W + 2 * M) / (H + 2 * M)).toFixed(4)})))`, margin: "0 auto" }}
+        style={{
+          width: `min(100%, ${Math.round((avail ?? 520) * ((W + 2 * M) / (H + 2 * M)))}px)`,
+          margin: "0 auto",
+        }}
         viewBox={`${-M} ${-M} ${W + 2 * M} ${H + 2 * M}`}
         onPointerDown={onDown}
         onPointerMove={onMove}

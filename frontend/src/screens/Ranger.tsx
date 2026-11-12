@@ -6,6 +6,7 @@ import Scanner from "../components/Scanner";
 import CategoryFields, { type AttrValue } from "../components/CategoryFields";
 import CategoryPicker from "../components/CategoryPicker";
 import LocationPicker from "../components/LocationPicker";
+import PlanCellPicker, { hasPlan } from "../components/PlanCellPicker";
 import PhotoAnalysis from "../components/PhotoAnalysis";
 import { inheritedFields, nameWithValue } from "../fields";
 import { fetchLabel, normalizeCode } from "../qr";
@@ -22,6 +23,8 @@ export default function Ranger() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [dest, setDest] = useState<NodeDetail | null>(null);
+  // Boîte à plan reçue par « Ranger ici » : on demande la case avant de ranger.
+  const [askCell, setAskCell] = useState<NodeDetail | null>(null);
 
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("1");
@@ -78,7 +81,13 @@ export default function Ranger() {
 
   useEffect(() => {
     if (!to) return;
-    api.get<NodeDetail>(`/nodes/${to}`).then(setDest).catch(() => setDest(null));
+    api
+      .get<NodeDetail>(`/nodes/${to}`)
+      .then((node) => {
+        setDest(node);
+        if (hasPlan(node)) setAskCell(node);
+      })
+      .catch(() => setDest(null));
   }, [to]);
 
   // Propositions de doublons pendant la frappe.
@@ -177,6 +186,16 @@ export default function Ranger() {
       <section className="card">
         <h2>1. Où ?</h2>
         {dest && <p className="muted small">{dest.breadcrumb.map((b) => b.name).join(" › ")}</p>}
+        {askCell && (
+          <PlanCellPicker
+            box={askCell}
+            onPick={(cell) => {
+              setDest(cell);
+              setAskCell(null);
+            }}
+            onWhole={() => setAskCell(null)}
+          />
+        )}
         <LocationPicker value={dest} onChange={setDest} emptyLabel="aucun (à ranger plus tard)" />
       </section>
 

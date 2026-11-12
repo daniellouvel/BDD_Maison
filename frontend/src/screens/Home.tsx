@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
 import ItemLocation from "../components/ItemLocation";
+import { loadPlanNames } from "../components/PlanView";
 import PhoneActions from "../components/PhoneActions";
 import QuantityBar from "../components/QuantityBar";
 import PlanPreview from "../components/PlanPreview";
@@ -582,6 +583,27 @@ function AddPanel({ parent, onDone }: { parent: NodeDetail | null; onDone: (crea
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Boîte à plan : on peut ajouter directement dans une de ses cases.
+  const [cells, setCells] = useState<{ id: string; name: string }[]>([]);
+  const [cellId, setCellId] = useState("");
+
+  useEffect(() => {
+    setCellId("");
+    setCells([]);
+    const layout = parent?.layout;
+    if (!parent || !layout || !Array.isArray(layout.levels)) return;
+    let cancelled = false;
+    loadPlanNames(parent.id, layout)
+      .then((names) => {
+        if (cancelled) return;
+        const list = layout.levels.flatMap((l) => l.cells.map((c) => ({ id: c.node_id, name: names[c.node_id] ?? "Case" })));
+        setCells(list.sort((a, b) => a.name.localeCompare(b.name, "fr", { numeric: true })));
+      })
+      .catch(() => setCells([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [parent]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -595,14 +617,14 @@ function AddPanel({ parent, onDone }: { parent: NodeDetail | null; onDone: (crea
           const article = await api.post<{ id: string }>("/articles", { name: name.trim() });
           const item = await api.post<{ id: string }>("/nodes", {
             kind: "item",
-            parent_id: parent?.id ?? null,
+            parent_id: cellId || parent?.id || null,
             article_id: article.id,
             quantity: quantity || "1",
             unit: unit || null,
           });
           id = item.id;
         } else {
-          const created = await api.post<{ id: string }>("/nodes", { kind, name: name.trim(), parent_id: parent?.id ?? null });
+          const created = await api.post<{ id: string }>("/nodes", { kind, name: name.trim(), parent_id: cellId || parent?.id || null });
           id = created.id;
         }
         setCreatedId(id);
@@ -634,6 +656,19 @@ function AddPanel({ parent, onDone }: { parent: NodeDetail | null; onDone: (crea
         <option value="location">Emplacement (meuble, zone…)</option>
         <option value="item">Objet</option>
       </select>
+      {cells.length > 0 && (
+        <label className="small muted">
+          Dans quelle case ? (facultatif)
+          <select value={cellId} onChange={(e) => setCellId(e.target.value)}>
+            <option value="">Toute la boîte, sans case précise</option>
+            {cells.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <input placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
       {kind === "item" && (
         <div className="row">

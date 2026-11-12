@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
+import PlanCellPicker, { hasPlan } from "../components/PlanCellPicker";
 import Scanner from "../components/Scanner";
 import { fetchLabel } from "../qr";
 import type { Label, NodeDetail } from "../types";
@@ -52,6 +53,7 @@ export default function Scan() {
 /** Ranger en série : on scanne une destination, puis chaque objet qui y va, un par un. */
 function SerieMode() {
   const [dest, setDest] = useState<NodeDetail | null>(null);
+  const [planBox, setPlanBox] = useState<NodeDetail | null>(null);
   const [log, setLog] = useState<{ name: string; ok: boolean; text: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -68,7 +70,8 @@ function SerieMode() {
       const name = node.name ?? node.article_name ?? "Objet";
       // Un lieu ou un contenant scanné devient la destination ; un objet est rangé dedans.
       if (node.kind !== "item") {
-        setDest(node);
+        if (hasPlan(node)) setPlanBox(node);
+        else setDest(node);
         return;
       }
       if (!dest) {
@@ -87,6 +90,23 @@ function SerieMode() {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (planBox) {
+    return (
+      <PlanCellPicker
+        box={planBox}
+        onPick={(cell) => {
+          setDest(cell);
+          setPlanBox(null);
+        }}
+        onWhole={() => {
+          setDest(planBox);
+          setPlanBox(null);
+        }}
+        onCancel={() => setPlanBox(null)}
+      />
+    );
   }
 
   if (!dest) {
@@ -175,6 +195,8 @@ function OpenMode() {
 function MoveMode({ preselected }: { preselected: string | null }) {
   const [source, setSource] = useState<NodeDetail | null>(null);
   const [destination, setDestination] = useState<NodeDetail | null>(null);
+  // Boîte scannée qui a un plan : on laisse choisir la case avant de confirmer.
+  const [planBox, setPlanBox] = useState<NodeDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<NodeDetail | null>(null);
   const [busy, setBusy] = useState(false);
@@ -204,7 +226,8 @@ function MoveMode({ preselected }: { preselected: string | null }) {
         setError("La destination doit être un emplacement ou un contenant, pas un objet.");
         return;
       }
-      setDestination(label.node);
+      if (hasPlan(label.node)) setPlanBox(label.node);
+      else setDestination(label.node);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Lecture impossible.");
     }
@@ -230,6 +253,7 @@ function MoveMode({ preselected }: { preselected: string | null }) {
   function restart() {
     setSource(null);
     setDestination(null);
+    setPlanBox(null);
     setDone(null);
     setError(null);
   }
@@ -260,7 +284,20 @@ function MoveMode({ preselected }: { preselected: string | null }) {
         </li>
       </ol>
       {error && <p className="error">{error}</p>}
-      {source && destination ? (
+      {planBox ? (
+        <PlanCellPicker
+          box={planBox}
+          onPick={(cell) => {
+            setDestination(cell);
+            setPlanBox(null);
+          }}
+          onWhole={() => {
+            setDestination(planBox);
+            setPlanBox(null);
+          }}
+          onCancel={() => setPlanBox(null)}
+        />
+      ) : source && destination ? (
         <div className="row">
           <button type="button" onClick={confirm} disabled={busy}>
             Confirmer le déplacement

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, ApiError } from "../api";
 import { fetchLabel, normalizeCode } from "../qr";
 import type { BoxLayout, Node, NodeDetail } from "../types";
+import PlanCellPicker, { hasPlan } from "./PlanCellPicker";
 import PlanView, { loadPlanNames } from "./PlanView";
 import Scanner from "./Scanner";
 
@@ -19,6 +20,8 @@ export default function LocationPicker({
 }) {
   const [mode, setMode] = useState<Mode | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Boîte scannée ou saisie qui a un plan : on laisse choisir la case.
+  const [planBox, setPlanBox] = useState<NodeDetail | null>(null);
 
   function accept(node: NodeDetail) {
     if (node.kind === "item") {
@@ -37,6 +40,12 @@ export default function LocationPicker({
       const label = await fetchLabel(code);
       if (label.status !== "assigned" || !label.node) {
         setError(`${code} n'est affectée à aucun emplacement.`);
+        return;
+      }
+      if (label.node.kind !== "item" && hasPlan(label.node)) {
+        setError(null);
+        setMode(null);
+        setPlanBox(label.node);
         return;
       }
       accept(label.node);
@@ -63,7 +72,22 @@ export default function LocationPicker({
         )}
       </p>
 
-      {mode === null && (
+      {planBox && (
+        <PlanCellPicker
+          box={planBox}
+          onPick={(cell) => {
+            accept(cell);
+            setPlanBox(null);
+          }}
+          onWhole={() => {
+            accept(planBox);
+            setPlanBox(null);
+          }}
+          onCancel={() => setPlanBox(null)}
+        />
+      )}
+
+      {mode === null && !planBox && (
         <div className="row">
           <button type="button" className="secondary" onClick={() => setMode("scan")}>
             Scanner l'emplacement

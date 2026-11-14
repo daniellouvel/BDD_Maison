@@ -11,6 +11,7 @@ import PlanCellPicker, { hasPlan } from "../components/PlanCellPicker";
 import PhotoAnalysis from "../components/PhotoAnalysis";
 import { inheritedFields, nameWithValue } from "../fields";
 import { fetchLabel, normalizeCode } from "../qr";
+import { usePhone } from "../usePhone";
 import type { Analysis, Article, Category, FieldDef, Identification, NodeDetail } from "../types";
 
 /**
@@ -41,7 +42,17 @@ export default function Ranger() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [aiApplied, setAiApplied] = useState(false);
 
+  const phone = usePhone();
+  // Téléphone : trois écrans courts (1 où, 2 quoi, 3 combien). Le lieu est gardé pour la série.
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [showExisting, setShowExisting] = useState(false);
+  const [lastDone, setLastDone] = useState<string | null>(null);
   const nameInput = useRef<HTMLInputElement>(null);
+
+  // Dès qu'un lieu est choisi (et la case, s'il y en a un plan), on passe à l'étape « Quoi ? ».
+  useEffect(() => {
+    if (phone && dest && !askCell) setStep((s) => (s === 1 ? 2 : s));
+  }, [phone, dest, askCell]);
   const [stored, setStored] = useState<Stored[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -175,12 +186,213 @@ export default function Ranger() {
       resetItem();
       if (labelError) setError(labelError);
       // Série : on repart sur le champ du nom pour enchaîner sans toucher l'écran.
+      setLastDone(`${article.name} × ${formatQty(quantity || "1", unit)}`);
+      setStep(2);
       nameInput.current?.focus();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Rangement impossible.");
     } finally {
       setBusy(false);
     }
+  }
+
+  if (phone) {
+    const where = dest ? dest.breadcrumb.map((b) => b.name).join(" › ") : null;
+    const hasName = Boolean(existing || name.trim());
+    const qtyNumber = Number(quantity);
+    const setQty = (n: number) => setQuantity(String(Math.max(0, Math.round(n * 1000) / 1000)));
+    return (
+      <div className="wiz">
+        <div className="wiz-head">
+          <span className="wiz-dots" aria-label={`Étape ${step} sur 3`}>
+            {[1, 2, 3].map((n) => (
+              <i key={n} className={n === step ? "on" : n < step ? "done" : ""} />
+            ))}
+          </span>
+          {where && step > 1 && (
+            <button type="button" className="wiz-where" onClick={() => setStep(1)}>
+              📍 {where} <u>Changer</u>
+            </button>
+          )}
+        </div>
+
+        <div className="wiz-body">
+          {step === 1 && (
+            <section>
+              <h2>Où ranger ?</h2>
+              {askCell && (
+                <PlanCellPicker
+                  box={askCell}
+                  onPick={(cell) => {
+                    setDest(cell);
+                    setAskCell(null);
+                  }}
+                  onWhole={() => setAskCell(null)}
+                />
+              )}
+              {!askCell && <LocationPicker value={dest} onChange={setDest} emptyLabel="à choisir" />}
+              {dest && !askCell && (
+                <button type="button" className="wiz-next" onClick={() => setStep(2)}>
+                  Continuer ›
+                </button>
+              )}
+              {!dest && !askCell && (
+                <button type="button" className="secondary" onClick={() => setStep(2)}>
+                  Ranger plus tard (sans lieu)
+                </button>
+              )}
+            </section>
+          )}
+
+          {step === 2 && (
+            <section>
+              {lastDone && !name && <p className="wiz-ok">✓ {lastDone} rangé</p>}
+              {scanned || showExisting ? (
+                <>
+                  <ExistingItem dest={dest} item={scanned} onItem={setScanned} onDone={(placed) => setStored((s) => [placed, ...s])} />
+                  {!scanned && (
+                    <button type="button" className="secondary" onClick={() => setShowExisting(false)}>
+                      ← Nouvel objet
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <h2>Quel objet ?</h2>
+                  <input
+                    ref={nameInput}
+                    className="wiz-input"
+                    placeholder="Nom de l'objet"
+                    value={existing ? existing.name : name}
+                    onChange={(e) => {
+                      setExisting(null);
+                      setName(e.target.value);
+                    }}
+                    autoFocus
+                  />
+                  {existing && (
+                    <p className="muted small">
+                      Article existant : le stock sera ajouté.{" "}
+                      <button type="button" className="linklike" onClick={() => setExisting(null)}>
+                        Créer un nouvel article
+                      </button>
+                    </p>
+                  )}
+                  {suggestions.length > 0 && !existing && (
+                    <ul className="wiz-sugg">
+                      {suggestions.map((sg) => (
+                        <li key={sg.id}>
+                          <button type="button" onClick={() => setExisting(sg)}>
+                            Ajouter du stock à « {sg.name} »
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="wiz-tools">
+                    <label className="filebutton">
+                      📷 Photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={(e) => {
+                          setPhoto(e.target.files?.[0] ?? null);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                    <button type="button" className="secondary" onClick={() => setShowExisting(true)}>
+                      🏷️ Objet déjà étiqueté
+                    </button>
+                  </div>
+                  {photo && (
+                    <PhotoAnalysis
+                      photo={photo}
+                      onApply={applyIdentification}
+                      onUseReference={(reference) => {
+                        setExisting(null);
+                        if (!name.trim()) setName(reference);
+                        setAiApplied(true);
+                      }}
+                      onPickExisting={(article) => {
+                        setExisting(article);
+                        setAiApplied(true);
+                      }}
+                      onAnalysis={(a) => {
+                        setAnalysis(a);
+                        setAiApplied(false);
+                      }}
+                    />
+                  )}
+                  <button type="button" className="wiz-next" disabled={!hasName} onClick={() => setStep(3)}>
+                    Suivant ›
+                  </button>
+                </>
+              )}
+            </section>
+          )}
+
+          {step === 3 && (
+            <form onSubmit={submit}>
+              <h2>Combien ?</h2>
+              <p className="wiz-what">{existing ? existing.name : name.trim()}</p>
+              <div className="wiz-stepper">
+                <button type="button" aria-label="Moins" onClick={() => setQty(qtyNumber - 1)}>
+                  −
+                </button>
+                <input type="number" min="0" step="any" inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+                <button type="button" aria-label="Plus" onClick={() => setQty(qtyNumber + 1)}>
+                  +
+                </button>
+              </div>
+              <div className="qty-quick">
+                {[1, 5, 10, 25, 50, 100].map((n) => (
+                  <button key={n} type="button" className="chip" onClick={() => setQuantity(String(n))}>
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <Fold title="Plus de détails : unité, catégorie, étiquette" defaultOpen={Boolean(unit || categoryId || labelCode)}>
+                <input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="Unité (pcs, g…)" />
+                {!existing && (
+                  <>
+                    <CategoryPicker
+                      categories={categories}
+                      value={categoryId}
+                      onChange={(id) => {
+                        setCategoryId(id);
+                        setAttributes({});
+                      }}
+                    />
+                    <CategoryFields fields={catFields} values={attributes} onChange={setAttributes} />
+                  </>
+                )}
+                <LabelField value={labelCode} onChange={setLabelCode} />
+              </Fold>
+              {error && <p className="error small">{error}</p>}
+              <button type="submit" className="wiz-next" disabled={busy || !(qtyNumber > 0)}>
+                {busy ? "Rangement…" : dest ? "✓ Ranger ici" : "✓ Enregistrer sans lieu"}
+              </button>
+            </form>
+          )}
+          {step !== 3 && error && <p className="error small">{error}</p>}
+        </div>
+
+        <div className="wiz-foot">
+          {step > 1 && (
+            <button type="button" className="secondary" onClick={() => setStep((step - 1) as 1 | 2)}>
+              ‹ Retour
+            </button>
+          )}
+          {stored.length > 0 && (
+            <button type="button" className="secondary" onClick={() => navigate(dest ? `/e/${dest.slug ?? dest.id}` : "/")}>
+              Terminer ({stored.length})
+            </button>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (

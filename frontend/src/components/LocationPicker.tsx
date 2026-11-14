@@ -167,15 +167,22 @@ export default function LocationPicker({
 function PlaceSearch({ onPick }: { onPick: (id: string) => void }) {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<PlaceHit[]>([]);
+  const [answered, setAnswered] = useState("");
   const [recent] = useState<Recent[]>(readRecent);
 
   useEffect(() => {
     const term = q.trim();
-    if (!term) return setHits([]);
+    if (!term) {
+      setHits([]);
+      return setAnswered("");
+    }
     const timer = window.setTimeout(() => {
       api
         .get<PlaceHit[]>(`/nodes/find?q=${encodeURIComponent(term)}`)
-        .then(setHits)
+        .then((list) => {
+          setHits(list);
+          setAnswered(term);
+        })
         .catch(() => setHits([]));
     }, 200);
     return () => window.clearTimeout(timer);
@@ -184,7 +191,7 @@ function PlaceSearch({ onPick }: { onPick: (id: string) => void }) {
   return (
     <div className="place-search">
       <input type="search" placeholder="Chercher un lieu ou une boîte par son nom…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Chercher un lieu" />
-      {q.trim() && hits.length === 0 && <p className="muted small">Aucun lieu ne porte ce nom.</p>}
+      {q.trim() && answered === q.trim() && hits.length === 0 && <p className="muted small">Aucun lieu ne porte ce nom.</p>}
       {hits.length > 0 && (
         <ul className="place-hits">
           {hits.map((h) => (

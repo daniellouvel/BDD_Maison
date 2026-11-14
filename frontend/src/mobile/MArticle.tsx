@@ -6,12 +6,14 @@ import LocationPicker from "../components/LocationPicker";
 import { useLocation } from "../components/ItemLocation";
 import { LotActions } from "../components/LotStatus";
 import PlanView from "../components/PlanView";
+import MovementHistory from "../components/MovementHistory";
+import { notify, undoMovement } from "../toast";
 import ArticleDetailScreen from "../screens/ArticleDetail";
 import type { ArticleDetail, LocationRef, NodeDetail } from "../types";
 import { LabelSheet } from "./MNode";
 import { MHeader, Segmented, Sheet } from "./ui";
 
-type Tab = "stock" | "plan" | "fiche";
+type Tab = "stock" | "plan" | "histo" | "fiche";
 type SheetName = "take" | "lend" | "move" | "label" | null;
 
 /**
@@ -76,7 +78,8 @@ export default function MArticle() {
     setBusy(true);
     setError(null);
     try {
-      await api.post("/stock/movements", { node_id: target.node_id, kind, delta: "1" });
+      const m = await api.post<{ id: string }>("/stock/movements", { node_id: target.node_id, kind, delta: "1" });
+      notify(kind === "out" ? "Retiré 1" : "Ajouté 1", undoMovement(m.id, () => void load()));
       await load();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Mouvement impossible.");
@@ -108,11 +111,12 @@ export default function MArticle() {
         options={[
           { value: "stock", label: `Lots (${lots.length})` },
           ...(location ? [{ value: "plan" as Tab, label: "Plan" }] : []),
+          { value: "histo", label: "Historique" },
           { value: "fiche", label: "Fiche" },
         ]}
       />
 
-      <div className={`m-body${tab === "fiche" ? " m-pad m-notitle" : tab === "plan" ? " m-pad" : ""}`}>
+      <div className={`m-body${tab === "fiche" ? " m-pad m-notitle" : tab === "plan" || tab === "histo" ? " m-pad" : ""}`}>
         {error && <p className="error m-pad">{error}</p>}
         {!article && !error && <p className="m-empty">Chargement…</p>}
 
@@ -162,6 +166,8 @@ export default function MArticle() {
             <PlanView layout={location.layout} names={location.names} highlight={[location.cell]} initialLevel={location.level} />
           </>
         )}
+
+        {article && tab === "histo" && <MovementHistory articleId={article.id} onChanged={() => void load()} />}
 
         {article && tab === "fiche" && <ArticleDetailScreen articleId={article.id} />}
       </div>
@@ -229,7 +235,8 @@ function TakeSheet({ lot, onClose, onDone }: { lot: LocationRef; onClose: () => 
     setBusy(true);
     setError(null);
     try {
-      await api.post("/stock/movements", { node_id: lot.node_id, kind, delta: quantity, reason: reason.trim() || null });
+      const m = await api.post<{ id: string }>("/stock/movements", { node_id: lot.node_id, kind, delta: quantity, reason: reason.trim() || null });
+      notify("Stock modifié", undoMovement(m.id, onDone));
       onDone();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Mouvement impossible.");
@@ -273,7 +280,8 @@ function MoveLotSheet({ lot, onClose, onDone }: { lot: LocationRef; onClose: () 
     setBusy(true);
     setError(null);
     try {
-      await api.post("/stock/movements", { node_id: lot.node_id, kind: "move", to_node_id: target.id });
+      const m = await api.post<{ id: string }>("/stock/movements", { node_id: lot.node_id, kind: "move", to_node_id: target.id });
+      notify(`Déplacé vers « ${target.name ?? "…"} »`, undoMovement(m.id, onDone));
       onDone();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Déplacement impossible.");

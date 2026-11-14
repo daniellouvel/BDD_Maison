@@ -5,6 +5,7 @@ import { useAuth } from "../auth";
 import CategoryFields from "../components/CategoryFields";
 import CategoryPicker from "../components/CategoryPicker";
 import Fold from "../components/Fold";
+import MovementHistory from "../components/MovementHistory";
 import { LotActions, STATUS_LABEL } from "../components/LotStatus";
 import MovementForm from "../components/MovementForm";
 import SimilarList from "../components/SimilarList";
@@ -406,6 +407,15 @@ export default function ArticleDetailScreen({ articleId }: { articleId?: string 
             ))}
           </ul>
         </section>
+        </Fold>
+      )}
+
+      {show("stock") && (
+        <Fold title="Historique">
+          <section className="card">
+            <h2>Historique</h2>
+            <MovementHistory articleId={article.id} onChanged={load} />
+          </section>
         </Fold>
       )}
 

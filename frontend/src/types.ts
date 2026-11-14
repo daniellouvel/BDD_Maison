@@ -353,3 +353,19 @@ export interface Purchase {
   created_at: string;
   updated_at: string;
 }
+
+export interface MovementEntry {
+  id: string;
+  node_id: string;
+  article_id: string;
+  article_name: string;
+  kind: string;
+  delta: string;
+  reason: string | null;
+  actor: string | null;
+  created_at: string;
+  node_path: string[];
+  from_path: string[] | null;
+  to_path: string[] | null;
+  undoable: boolean;
+}

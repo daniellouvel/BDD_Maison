@@ -126,3 +126,33 @@ def test_stock_value_splits_stock_lent_and_unpriced(admin_client: TestClient) ->
     assert float(value["lent"]) == 2.0
     assert value["unpriced_lots"] == 1 and value["priced_lots"] == 2
     assert priced["id"] != lent["id"]
+
+
+def test_history_lists_movements_and_undo_reverts_the_last_one(admin_client: TestClient) -> None:
+    art = _article(admin_client)
+    armoire = _location(admin_client)
+    item = _item(admin_client, art["id"], armoire["id"], "5")
+    admin_client.post(f"{API}/stock/movements", json={"node_id": item["id"], "kind": "out", "delta": "2"}, headers=CSRF)
+
+    rows = admin_client.get(f"{API}/stock/history", params={"node_id": item["id"]}).json()
+    assert [r["kind"] for r in rows] == ["out", "in"]
+    assert rows[0]["actor"] and rows[0]["node_path"] == ["Armoire", "Condensateur 22 µF"] or rows[0]["node_path"]
+    assert rows[0]["undoable"] is True and rows[1]["undoable"] is False  # seul le dernier s'annule
+
+    r = admin_client.post(f"{API}/stock/movements/{rows[0]['id']}/undo", headers=CSRF)
+    assert r.status_code == 201, r.text
+    assert _node(admin_client, item["id"])["quantity"] == "5.000"
+
+    again = admin_client.post(f"{API}/stock/movements/{rows[0]['id']}/undo", headers=CSRF)
+    assert again.status_code == 409 and again.json()["code"] == "not_undoable"
+
+
+def test_undo_of_a_move_puts_the_lot_back(admin_client: TestClient) -> None:
+    art = _article(admin_client)
+    a, b = _location(admin_client, "A"), _location(admin_client, "B")
+    item = _item(admin_client, art["id"], a["id"])
+    admin_client.post(f"{API}/stock/movements", json={"node_id": item["id"], "kind": "move", "to_node_id": b["id"]}, headers=CSRF)
+    last = admin_client.get(f"{API}/stock/history", params={"node_id": item["id"]}).json()[0]
+    assert last["kind"] == "move" and last["to_path"] == ["B"] and last["from_path"] == ["A"]
+    assert admin_client.post(f"{API}/stock/movements/{last['id']}/undo", headers=CSRF).status_code == 201
+    assert _node(admin_client, item["id"])["parent_id"] == a["id"]

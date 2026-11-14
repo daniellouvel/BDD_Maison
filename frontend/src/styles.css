@@ -449,3 +449,10 @@ label.checkbox input { width: auto; }
 .place-recent { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
 .chip { border-radius: 999px; padding: 0.3rem 0.8rem; background: var(--border); color: inherit; border: 0; font-size: 0.9rem; }
 .qty-quick { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+
+.toast { position: fixed; left: 50%; bottom: 76px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 0.9rem; max-width: calc(100vw - 24px); padding: 0.65rem 0.9rem; border-radius: 12px; background: var(--bar); color: var(--bar-text); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
+.toast button { background: none; border: 0; color: #fbbf24; font-weight: 700; padding: 0.2rem 0.4rem; }
+.history { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.history li { display: grid; gap: 0.1rem; padding: 0.45rem 0; border-bottom: 1px solid var(--border); }
+.history .pos { color: var(--ok); font-weight: 600; }
+.history .neg { color: var(--danger); font-weight: 600; }

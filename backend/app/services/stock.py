@@ -1,3 +1,4 @@
+import datetime as dt
 import uuid
 from decimal import Decimal
 
@@ -5,8 +6,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError
-from app.models import Movement, Node, User, utcnow
-from app.schemas import LocationRef, MovementIn
+from app.models import Article, Movement, Node, User, utcnow
+from app.schemas import LocationRef, MovementEntry, MovementIn
 from app.services import nodes as node_service
 from app.services.common import get_active
 
@@ -152,3 +153,69 @@ def history(
     if article_id is not None:
         stmt = stmt.where(Movement.article_id == article_id)
     return list(db.scalars(stmt))
+
+
+UNDO_WINDOW_HOURS = 24
+
+
+def _path_names(db: Session, node_id: uuid.UUID | None) -> list[str] | None:
+    node = db.get(Node, node_id) if node_id else None
+    if node is None:
+        return None
+    return [node_service.label(db, n) for n in node_service.path_of(db, node)]
+
+
+def _undoable(db: Session, movement: Movement) -> bool:
+    if movement.kind not in ("in", "out", "consume", "move"):
+        return False
+    if movement.kind == "move" and movement.from_node_id is None:
+        return False
+    if utcnow() - movement.created_at > dt.timedelta(hours=UNDO_WINDOW_HOURS):
+        return False
+    node = db.get(Node, movement.node_id)
+    if node is None or node.archived_at is not None or node.status != "in_stock":
+        return False
+    latest = db.scalar(
+        select(Movement.id).where(Movement.node_id == movement.node_id).order_by(Movement.created_at.desc(), Movement.id.desc()).limit(1)
+    )
+    return latest == movement.id
+
+
+def timeline(db: Session, node_id: uuid.UUID | None, article_id: uuid.UUID | None, limit: int) -> list[MovementEntry]:
+    entries: list[MovementEntry] = []
+    for m in history(db, node_id, article_id, limit):
+        article = db.get(Article, m.article_id)
+        actor = db.get(User, m.actor_id) if m.actor_id else None
+        entries.append(
+            MovementEntry(
+                id=m.id,
+                node_id=m.node_id,
+                article_id=m.article_id,
+                article_name=article.name if article else "?",
+                kind=m.kind,
+                delta=m.delta,
+                reason=m.reason,
+                actor=actor.username if actor else None,
+                created_at=m.created_at,
+                node_path=_path_names(db, m.node_id) or [],
+                from_path=_path_names(db, m.from_node_id),
+                to_path=_path_names(db, m.to_node_id),
+                undoable=_undoable(db, m),
+            )
+        )
+    return entries
+
+
+def undo(db: Session, movement_id: uuid.UUID, actor: User) -> Movement:
+    """Annule le dernier mouvement d'un lot par le mouvement inverse (le journal garde les deux)."""
+    movement = db.get(Movement, movement_id)
+    if movement is None:
+        raise ApiError(404, "not_found", "Mouvement introuvable")
+    if not _undoable(db, movement):
+        raise ApiError(409, "not_undoable", "Ce mouvement ne peut plus être annulé (un autre a eu lieu depuis, ou il date de plus d'un jour).")
+    if movement.kind == "move":
+        inverse = MovementIn(node_id=movement.node_id, kind="move", to_node_id=movement.from_node_id, reason="Annulation")
+    else:
+        kind = "out" if movement.kind == "in" else "in"
+        inverse = MovementIn(node_id=movement.node_id, kind=kind, delta=abs(movement.delta), reason="Annulation")
+    return apply(db, inverse, actor)

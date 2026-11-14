@@ -3,6 +3,7 @@ import { NavLink, Route, Routes } from "react-router-dom";
 import { api, ApiError } from "./api";
 import { AuthContext, type AuthState } from "./auth";
 import MobileApp from "./mobile/MobileApp";
+import { Toasts } from "./toast";
 import { readUiChoice, saveUiChoice, usePhone } from "./usePhone";
 import Home from "./screens/Home";
 import Categories from "./screens/Categories";
@@ -108,12 +109,14 @@ export default function App() {
             setUi("classic");
           }}
         />
+        <Toasts />
       </AuthContext.Provider>
     );
   }
 
   return (
     <AuthContext.Provider value={auth}>
+      <Toasts />
       <header className="topbar">
         <NavLink to="/" className="brand">
           MyWorkshop

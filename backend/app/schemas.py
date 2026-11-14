@@ -240,6 +240,24 @@ class MovementOut(_Base):
     created_at: dt.datetime
 
 
+class MovementEntry(BaseModel):
+    """Ligne d'historique lisible : qui, quoi, où, et si l'on peut encore l'annuler."""
+
+    id: uuid.UUID
+    node_id: uuid.UUID
+    article_id: uuid.UUID
+    article_name: str
+    kind: str
+    delta: Decimal
+    reason: str | None
+    actor: str | None
+    created_at: dt.datetime
+    node_path: list[str]
+    from_path: list[str] | None = None
+    to_path: list[str] | None = None
+    undoable: bool = False
+
+
 # --- Fichiers -----------------------------------------------------------------------------------
 
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, ApiError, formatQty } from "../api";
 import type { NodeDetail } from "../types";
+import { notify, undoMovement } from "../toast";
 import MovementForm from "./MovementForm";
 
 /**
@@ -17,7 +18,8 @@ export default function QuantityBar({ node, onDone }: { node: NodeDetail; onDone
     setBusy(true);
     setError(null);
     try {
-      await api.post("/stock/movements", { node_id: node.id, kind, delta: "1" });
+      const m = await api.post<{ id: string }>("/stock/movements", { node_id: node.id, kind, delta: "1" });
+      notify(kind === "out" ? "Retiré 1" : "Ajouté 1", undoMovement(m.id, onDone));
       onDone();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Mouvement impossible.");

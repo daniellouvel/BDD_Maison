@@ -6,7 +6,7 @@ from fastapi.responses import Response
 from app.api.deps import CurrentUser, DbSession, Writer
 from app.core.errors import not_found
 from app.models import Node
-from app.schemas import LayoutIn, NodeDetail, NodeIn, NodeOut, NodePatch
+from app.schemas import LayoutIn, NodeDetail, NodeIn, NodeOut, NodePatch, PlaceHit
 from app.services import nodes as node_service
 
 router = APIRouter(prefix="/nodes", tags=["emplacements"])
@@ -19,6 +19,11 @@ def list_children(
     parent_id: uuid.UUID | None = Query(default=None, description="Absent = racine"),
 ) -> list[Node]:
     return node_service.children(db, parent_id)
+
+
+@router.get("/find", response_model=list[PlaceHit])
+def find_places(db: DbSession, _: CurrentUser, q: str = Query(min_length=1, max_length=100)) -> list[PlaceHit]:
+    return node_service.find_places(db, q)
 
 
 @router.post("", response_model=NodeDetail, status_code=201)

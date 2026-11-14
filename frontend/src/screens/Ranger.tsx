@@ -1,9 +1,10 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import LabelField from "../components/LabelField";
 import Scanner from "../components/Scanner";
 import CategoryFields, { type AttrValue } from "../components/CategoryFields";
+import Fold from "../components/Fold";
 import CategoryPicker from "../components/CategoryPicker";
 import LocationPicker from "../components/LocationPicker";
 import PlanCellPicker, { hasPlan } from "../components/PlanCellPicker";
@@ -40,6 +41,7 @@ export default function Ranger() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [aiApplied, setAiApplied] = useState(false);
 
+  const nameInput = useRef<HTMLInputElement>(null);
   const [stored, setStored] = useState<Stored[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -172,6 +174,8 @@ export default function Ranger() {
       setStored((s) => [{ name: article!.name, quantity: quantity || "1", unit }, ...s]);
       resetItem();
       if (labelError) setError(labelError);
+      // Série : on repart sur le champ du nom pour enchaîner sans toucher l'écran.
+      nameInput.current?.focus();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Rangement impossible.");
     } finally {
@@ -243,6 +247,7 @@ export default function Ranger() {
         )}
 
         <input
+          ref={nameInput}
           placeholder="Nom de l'objet"
           value={existing ? existing.name : name}
           onChange={(e) => {
@@ -271,9 +276,17 @@ export default function Ranger() {
         )}
 
         <div className="row">
-          <input type="number" min="0" step="any" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Quantité" />
-          <input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="Unité (pcs, g…)" />
+          <input type="number" min="0" step="any" inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Quantité" />
         </div>
+        <div className="qty-quick">
+          {[1, 5, 10, 25, 50, 100].map((n) => (
+            <button key={n} type="button" className="chip" onClick={() => setQuantity(String(n))}>
+              {n}
+            </button>
+          ))}
+        </div>
+        <Fold title="Plus de détails : unité, catégorie, étiquette" defaultOpen={Boolean(unit || categoryId || labelCode)}>
+        <input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="Unité (pcs, g…)" />
         {!existing && (
           <>
             <CategoryPicker
@@ -288,6 +301,7 @@ export default function Ranger() {
           </>
         )}
         <LabelField value={labelCode} onChange={setLabelCode} />
+        </Fold>
 
         {error && <p className="error small">{error}</p>}
         <button type="submit" disabled={busy}>

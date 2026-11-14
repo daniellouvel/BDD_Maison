@@ -8,6 +8,29 @@ import Scanner from "./Scanner";
 
 type Mode = "scan" | "code" | "browse";
 
+type PlaceHit = { id: string; name: string; kind: string; path: string[] };
+type Recent = { id: string; name: string; path: string };
+const RECENT_KEY = "mw_recent_places";
+
+function readRecent(): Recent[] {
+  try {
+    const list = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]");
+    return Array.isArray(list) ? list.slice(0, 6) : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberPlace(node: NodeDetail) {
+  try {
+    const path = node.breadcrumb.map((b) => b.name).join(" › ");
+    const next = [{ id: node.id, name: node.name ?? node.article_name ?? "Sans nom", path }, ...readRecent().filter((r) => r.id !== node.id)];
+    localStorage.setItem(RECENT_KEY, JSON.stringify(next.slice(0, 6)));
+  } catch {
+    // Mémoire des derniers lieux indisponible : sans gravité.
+  }
+}
+
 /** Choix de l'emplacement d'un objet : scan d'étiquette, saisie du code, ou parcours de l'arbre. */
 export default function LocationPicker({
   value,
@@ -29,8 +52,25 @@ export default function LocationPicker({
       return;
     }
     setError(null);
+    rememberPlace(node);
     onChange(node);
     setMode(null);
+  }
+
+  /** Un lieu choisi par son nom ou dans les derniers : on l'ouvre, et on propose la case s'il a un plan. */
+  async function pickById(id: string) {
+    setError(null);
+    try {
+      const node = await api.get<NodeDetail>(`/nodes/${id}`);
+      if (hasPlan(node)) {
+        setMode(null);
+        setPlanBox(node);
+      } else {
+        accept(node);
+      }
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Lieu introuvable.");
+    }
   }
 
   async function fromCode(raw: string) {
@@ -88,6 +128,10 @@ export default function LocationPicker({
       )}
 
       {mode === null && !planBox && (
+        <PlaceSearch onPick={pickById} />
+      )}
+
+      {mode === null && !planBox && (
         <div className="row">
           <button type="button" className="secondary" onClick={() => setMode("scan")}>
             Scanner l'emplacement
@@ -115,6 +159,54 @@ export default function LocationPicker({
       {mode === "browse" && <Browse onPick={accept} onCancel={() => setMode(null)} />}
 
       {error && <p className="error">{error}</p>}
+    </div>
+  );
+}
+
+/** Recherche d'un lieu par son nom, et raccourcis vers les derniers lieux utilisés. */
+function PlaceSearch({ onPick }: { onPick: (id: string) => void }) {
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<PlaceHit[]>([]);
+  const [recent] = useState<Recent[]>(readRecent);
+
+  useEffect(() => {
+    const term = q.trim();
+    if (!term) return setHits([]);
+    const timer = window.setTimeout(() => {
+      api
+        .get<PlaceHit[]>(`/nodes/find?q=${encodeURIComponent(term)}`)
+        .then(setHits)
+        .catch(() => setHits([]));
+    }, 200);
+    return () => window.clearTimeout(timer);
+  }, [q]);
+
+  return (
+    <div className="place-search">
+      <input type="search" placeholder="Chercher un lieu ou une boîte par son nom…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Chercher un lieu" />
+      {q.trim() && hits.length === 0 && <p className="muted small">Aucun lieu ne porte ce nom.</p>}
+      {hits.length > 0 && (
+        <ul className="place-hits">
+          {hits.map((h) => (
+            <li key={h.id}>
+              <button type="button" onClick={() => onPick(h.id)}>
+                <b>{h.name}</b>
+                <small>{h.path.slice(0, -1).join(" › ") || "Racine"}</small>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {!q.trim() && recent.length > 0 && (
+        <div className="place-recent">
+          <span className="muted small">Derniers lieux :</span>
+          {recent.map((r) => (
+            <button key={r.id} type="button" className="chip" title={r.path} onClick={() => onPick(r.id)}>
+              {r.name}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

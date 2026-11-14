@@ -290,3 +290,16 @@ def test_empty_category_can_be_deleted_but_not_a_parent(admin_client: TestClient
     assert refused.status_code == 409 and refused.json()["code"] == "category_not_empty"
     assert admin_client.delete(f"{API}/categories/{child['id']}", headers=CSRF).status_code == 204
     assert admin_client.delete(f"{API}/categories/{parent['id']}", headers=CSRF).status_code == 204
+
+
+def test_find_places_by_name_with_path(admin_client: TestClient) -> None:
+    bureau = _node(admin_client, kind="location", name="Bureau")
+    boite = _node(admin_client, kind="container", name="Boîte vis", parent_id=bureau["id"])
+    _node(admin_client, kind="container", name="Case 100%", parent_id=boite["id"])
+    r = admin_client.get(f"{API}/nodes/find", params={"q": "vis"})
+    assert r.status_code == 200
+    assert [h["name"] for h in r.json()] == ["Boîte vis"]
+    assert r.json()[0]["path"] == ["Bureau", "Boîte vis"]
+    # Le caractère % est cherché tel quel, pas comme un joker.
+    assert [h["name"] for h in admin_client.get(f"{API}/nodes/find", params={"q": "100%"}).json()] == ["Case 100%"]
+    assert admin_client.get(f"{API}/nodes/find", params={"q": "zzz"}).json() == []

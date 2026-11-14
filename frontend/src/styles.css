@@ -279,12 +279,12 @@ label.checkbox input { width: auto; }
 
 /* Accueil « À faire » */
 .home-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin: 0.5rem 0 0.9rem; }
-.home-action { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; padding: 0.9rem 0.4rem; border-radius: 12px; background: var(--card, #fff); border: 1px solid var(--border); text-decoration: none; color: inherit; text-align: center; }
+.home-action { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; padding: 0.9rem 0.4rem; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); text-decoration: none; color: inherit; text-align: center; }
 .home-action span { font-size: 1.5rem; }
 .home-action small { color: var(--muted, #777); font-size: 0.75rem; }
 .home-title { margin: 1rem 0 0.5rem; font-size: 1.1rem; }
 .todo-grid { display: grid; gap: 0.7rem; }
-.todo-card { background: var(--card, #fff); border: 1px solid var(--border); border-radius: 12px; padding: 0.8rem 0.9rem; }
+.todo-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.8rem 0.9rem; }
 .todo-card header { display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.3rem; }
 .todo-card header strong { font-size: 1.6rem; color: #b45309; }
 .todo-card ul { list-style: none; padding: 0; margin: 0 0 0.3rem; }
@@ -308,10 +308,10 @@ label.checkbox input { width: auto; }
 .org-caret { background: none; border: none; width: 1.4rem; min-height: auto; padding: 0; color: var(--muted, #777); }
 .org-name { background: none; border: none; text-align: left; padding: 0.35rem 0.2rem; min-height: auto; flex: 1; min-width: 0; overflow-wrap: anywhere; line-height: 1.3; color: inherit; font-weight: normal; }
 .detail-cards { display: grid; gap: 0.8rem; }
-.detail-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; background: var(--card, #fff); border: 1px solid var(--border); border-radius: 12px; padding: 0.9rem; }
+.detail-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.9rem; }
 .detail-head h2 { margin: 0.2rem 0; }
 .detail-actions { display: flex; gap: 0.4rem; align-items: flex-start; flex-wrap: wrap; }
-.detail-card { background: var(--card, #fff); border: 1px solid var(--border); border-radius: 12px; padding: 0.8rem 0.9rem; }
+.detail-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.8rem 0.9rem; }
 .detail-card h3 { margin: 0 0 0.5rem; font-size: 1rem; }
 /* Une liste déroulante ne dépasse jamais de sa carte, même avec un libellé long. */
 .detail-card select { max-width: 100%; }
@@ -325,7 +325,7 @@ label.checkbox input { width: auto; }
 .sidebar { display: none; }
 @media (min-width: 900px) {
   .bottombar { display: none; }
-  .sidebar { display: flex; flex-direction: column; gap: 0.1rem; position: fixed; top: 0; bottom: 0; left: 0; width: 220px; padding: 4.2rem 0.6rem 1rem; background: var(--card, #fff); border-right: 1px solid var(--border); overflow-y: auto; z-index: 5; }
+  .sidebar { display: flex; flex-direction: column; gap: 0.1rem; position: fixed; top: 0; bottom: 0; left: 0; width: 220px; padding: 4.2rem 0.6rem 1rem; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; z-index: 5; }
   .sidebar a { display: block; padding: 0.5rem 0.7rem; border-radius: 8px; color: inherit; text-decoration: none; font-size: 0.95rem; }
   .sidebar a:hover { background: rgba(0, 0, 0, 0.05); }
   .sidebar a.active { background: rgba(180, 83, 9, 0.12); color: var(--accent); font-weight: 600; }
@@ -441,3 +441,11 @@ label.checkbox input { width: auto; }
 
 .plan-cell-list li { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.3rem 0; }
 .plan-cell-list .danger { padding: 0.25rem 0.6rem; }
+
+.place-search { display: grid; gap: 0.4rem; margin-bottom: 0.5rem; }
+.place-hits { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.25rem; max-height: 14rem; overflow-y: auto; }
+.place-hits button { width: 100%; text-align: left; display: grid; background: var(--surface); color: inherit; border: 1px solid var(--border); }
+.place-hits small { opacity: 0.7; font-weight: normal; }
+.place-recent { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+.chip { border-radius: 999px; padding: 0.3rem 0.8rem; background: var(--border); color: inherit; border: 0; font-size: 0.9rem; }
+.qty-quick { display: flex; gap: 0.35rem; flex-wrap: wrap; }

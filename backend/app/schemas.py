@@ -166,6 +166,15 @@ class NodeOut(_Base):
     status: str = "in_stock"
 
 
+class PlaceHit(BaseModel):
+    """Emplacement ou contenant trouvé par son nom, avec son chemin."""
+
+    id: uuid.UUID
+    name: str
+    kind: str
+    path: list[str]
+
+
 class BreadcrumbItem(BaseModel):
     id: uuid.UUID
     name: str | None

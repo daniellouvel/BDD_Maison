@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError, conflict_version
 from app.models import Article, Movement, Node, NodeType, QrEvent, QrLabel, User, utcnow
-from app.schemas import BreadcrumbItem, LayoutIn, NodeDetail, NodeIn, NodePatch
+from app.schemas import BreadcrumbItem, LayoutIn, NodeDetail, NodeIn, NodePatch, PlaceHit
 from app.services.common import audit, get_active, snapshot
 
 
@@ -92,6 +92,24 @@ def check_unit(unit: str | None) -> None:
             "invalid_unit",
             "L'unité ne peut pas être un nombre : la quantité se saisit dans le champ « Quantité ». Laissez l'unité vide ou écrivez par exemple « pcs ».",
         )
+
+
+def find_places(db: Session, q: str, limit: int = 15) -> list[PlaceHit]:
+    """Emplacements et contenants dont le nom contient `q` (sans tenir compte de la casse)."""
+    term = q.strip()
+    if not term:
+        return []
+    pattern = "%" + term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+    rows = db.scalars(
+        select(Node)
+        .where(Node.archived_at.is_(None), Node.kind != "item", Node.name.ilike(pattern, escape="\\"))
+        .limit(200)
+    ).all()
+    rows.sort(key=lambda n: (not (n.name or "").lower().startswith(term.lower()), natural_key(n.name or "")))
+    return [
+        PlaceHit(id=n.id, name=n.name or "Sans nom", kind=n.kind, path=[label(db, a) for a in path_of(db, n)])
+        for n in rows[:limit]
+    ]
 
 
 def natural_key(text: str) -> list[tuple[int, int | str]]:

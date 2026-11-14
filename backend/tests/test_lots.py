@@ -182,3 +182,35 @@ def test_search_filters_by_place_category_low_stock_and_lent(admin_client: TestC
 
     admin_client.post(f"{API}/nodes/{item_a['id']}/loan", json={"version": item_a["version"], "recipient": "Paul"}, headers=CSRF)
     assert names(lent="true") == ["Vis M3"]
+
+
+def test_csv_import_preview_then_import_then_export(admin_client: TestClient) -> None:
+    content = (
+        "Nom;Marque;Quantité;Unité;Emplacement\n"
+        "Vis M3x10;Acme;120;pcs;Atelier > Boîte vis > Case 1\n"
+        "Vis M3x10;;30;pcs;Atelier > Boîte vis > Case 2\n"
+        "Résistance 10k;;50;;Atelier > Boîte résistances\n"
+        ";;1;;Atelier\n"
+    ).encode("utf-8")
+    files = {"file": ("inv.csv", content, "text/csv")}
+
+    preview = admin_client.post(f"{API}/import/inventory?dry_run=true", files=files, headers=CSRF).json()
+    assert preview["articles_created"] == 2 and preview["lots_created"] == 3
+    assert len(preview["problems"]) == 1  # ligne sans nom
+    assert admin_client.get(f"{API}/search", params={"q": "Vis"}).json() == []  # rien n'a été créé
+
+    done = admin_client.post(f"{API}/import/inventory?dry_run=false", files=files, headers=CSRF).json()
+    assert done["lots_created"] == 3 and done["places_created"] >= 4
+    hit = admin_client.get(f"{API}/search", params={"q": "Vis M3x10"}).json()[0]
+    assert hit["total_quantity"] == "150.000" and len(hit["locations"]) == 2
+
+    exported = admin_client.get(f"{API}/export/inventory.csv")
+    assert exported.status_code == 200
+    text = exported.content.decode("utf-8-sig")
+    assert text.splitlines()[0].startswith("Nom;Marque")
+    assert "Atelier > Boîte vis > Case 1" in text and "Résistance 10k" in text
+
+
+def test_csv_import_needs_a_name_column(admin_client: TestClient) -> None:
+    r = admin_client.post(f"{API}/import/inventory", files={"file": ("x.csv", b"Truc;Autre\n1;2\n", "text/csv")}, headers=CSRF)
+    assert r.status_code == 422 and r.json()["code"] == "missing_column"

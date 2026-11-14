@@ -148,3 +148,8 @@
 .m-filters { display: flex; gap: 0.4rem; overflow-x: auto; padding: 0.4rem 0.75rem 0.2rem; scrollbar-width: none; }
 .m-filters .chip, .m-filters select.chip { flex: none; min-height: 36px; border: 1px solid var(--border); background: transparent; color: var(--muted); }
 .m-filters .chip.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+
+.m-count { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; max-height: 50vh; overflow-y: auto; }
+.m-count li { display: flex; align-items: center; gap: 0.6rem; }
+.m-count li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-count input { width: 5.5rem; text-align: center; font-size: 1.1rem; }

@@ -10,10 +10,11 @@ import { normalizeCode } from "../qr";
 import type { Node, NodeDetail, NodeKind } from "../types";
 import { MHeader, Segmented, Sheet } from "./ui";
 
+import { notify } from "../toast";
 import RowIcon from "../components/RowIcon";
 const ICON: Record<NodeKind, string> = { location: "🏠", container: "📦", item: "🔩" };
 
-type SheetName = "menu" | "add" | "rename" | "move" | "label" | "plan" | null;
+type SheetName = "menu" | "add" | "rename" | "move" | "label" | "plan" | "count" | null;
 
 /** Lieux : un seul niveau à l'écran. On entre dans un emplacement en le touchant, on remonte avec « retour ». */
 export default function MNode() {
@@ -163,6 +164,9 @@ export default function MNode() {
             <button type="button" onClick={() => setSheet("rename")}>Renommer</button>
             <button type="button" onClick={() => setSheet("move")}>Déplacer</button>
             <button type="button" onClick={() => setSheet("plan")}>Plan (étages et cases)</button>
+            {(kids ?? []).some((k) => k.kind === "item") && (
+              <button type="button" onClick={() => setSheet("count")}>Compter le contenu</button>
+            )}
             {node.qr_code ? (
               <button type="button" onClick={() => navigate(`/qr/labels/${node.qr_code}`)}>Étiquette {node.qr_code}</button>
             ) : (
@@ -171,6 +175,19 @@ export default function MNode() {
             <button type="button" className="danger" onClick={remove}>Supprimer</button>
           </div>
         </Sheet>
+      )}
+
+      {sheet === "count" && node && kids && (
+        <CountSheet
+          title={node.name ?? "Contenu"}
+          items={kids.filter((k) => k.kind === "item" && k.status === "in_stock")}
+          names={names}
+          onClose={() => setSheet(null)}
+          onDone={() => {
+            setSheet(null);
+            void load();
+          }}
+        />
       )}
 
       {sheet === "add" && (
@@ -386,6 +403,73 @@ export function LabelSheet({ node, onClose, onDone }: { node: { id: string }; on
     <Sheet title="Associer une étiquette" onClose={onClose}>
       <Scanner onCode={onCode} hint="Scannez l'étiquette à coller sur cet élément" />
       {error && <p className="error small">{error}</p>}
+    </Sheet>
+  );
+}
+
+/** Inventaire d'une boîte : on corrige les quantités qui ne correspondent pas, le reste est validé tel quel. */
+function CountSheet({
+  title,
+  items,
+  names,
+  onClose,
+  onDone,
+}: {
+  title: string;
+  items: Node[];
+  names: Record<string, string>;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [counts, setCounts] = useState<Record<string, string>>(() => Object.fromEntries(items.map((i) => [i.id, String(Number(i.quantity ?? 0))])));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    let fixed = 0;
+    try {
+      for (const item of items) {
+        const wanted = Number(counts[item.id]);
+        const current = Number(item.quantity ?? 0);
+        if (!Number.isFinite(wanted) || wanted < 0) throw new ApiError(422, "invalid_quantity", "Quantité invalide.");
+        if (wanted === current) continue;
+        await api.post("/stock/movements", { node_id: item.id, kind: "adjust", delta: String(wanted - current), reason: "Inventaire" });
+        fixed += 1;
+      }
+      notify(fixed ? `Inventaire enregistré : ${fixed} correction(s)` : "Inventaire : tout est conforme");
+      onDone();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Inventaire impossible.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Sheet title={`Compter « ${title} »`} onClose={onClose}>
+      <div className="m-form">
+        <ul className="m-count">
+          {items.map((i) => (
+            <li key={i.id}>
+              <span>{i.name ?? (i.article_id ? names[i.article_id] : null) ?? "Objet"}</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="any"
+                value={counts[i.id]}
+                onChange={(e) => setCounts({ ...counts, [i.id]: e.target.value })}
+                aria-label="Quantité comptée"
+              />
+            </li>
+          ))}
+        </ul>
+        {error && <p className="error small">{error}</p>}
+        <button type="button" disabled={busy} onClick={save}>
+          Valider le comptage
+        </button>
+      </div>
     </Sheet>
   );
 }

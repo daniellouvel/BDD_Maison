@@ -169,6 +169,33 @@ export default function MArticle() {
 
         {article && tab === "histo" && <MovementHistory articleId={article.id} onChanged={() => void load()} />}
 
+        {article && tab === "fiche" && canWrite && (
+          <button
+            type="button"
+            className="secondary"
+            onClick={async () => {
+              try {
+                const copy = await api.post<{ id: string }>("/articles", {
+                  name: `${article.name} (copie)`,
+                  category_id: article.category_id,
+                  brand: article.brand,
+                  mpn: article.mpn,
+                  description: article.description,
+                  keywords: article.keywords,
+                  attributes: article.attributes,
+                  min_quantity: article.min_quantity,
+                });
+                notify("Fiche dupliquée : modifiez le nom et les valeurs");
+                navigate(`/a/${copy.id}`);
+              } catch (e) {
+                setError(e instanceof ApiError ? e.message : "Duplication impossible.");
+              }
+            }}
+          >
+            Dupliquer cette fiche
+          </button>
+        )}
+
         {article && tab === "fiche" && <ArticleDetailScreen articleId={article.id} />}
       </div>
 

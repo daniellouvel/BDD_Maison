@@ -242,7 +242,7 @@ export default function PlanEditor() {
     const cell = cells[index];
     if (!cell) return;
     const levelId = level.node_id;
-    if (!window.confirm(`Retirer « ${nameOf(cell.node_id)} » du plan ? Le contenant est archivé s'il est vide.`)) return;
+    if (!window.confirm(`Supprimer la case « ${nameOf(cell.node_id)} » ? Elle est retirée du plan et archivée si elle est vide ; sinon elle reste rangée avec son contenu.`)) return;
     await run(async () => {
       await save(withCells(levelId, (list) => list.filter((_, i) => i !== index)));
       setSelected(null);
@@ -541,14 +541,38 @@ export default function PlanEditor() {
                 </button>
                 {canWrite && (
                   <button type="button" className="secondary danger" disabled={busy} onClick={() => removeCell(selected as number)}>
-                    Retirer du plan
+                    Supprimer la case
                   </button>
                 )}
+                <button type="button" className="secondary" onClick={() => setSelected(null)}>
+                  ← Toutes les cases
+                </button>
               </div>
             </>
           )}
 
-          {!pending && !selectedCell && (
+          {!pending && !selectedCell && cells.length > 0 && (
+            <>
+              <h2>Cases ({cells.length})</h2>
+              <p className="muted small">Touchez une case pour la renommer, la modifier ou la supprimer.</p>
+              <ul className="list plan-cell-list">
+                {cells.map((c, i) => (
+                  <li key={c.node_id}>
+                    <button type="button" className="linklike" onClick={() => setSelected(i)}>
+                      {nameOf(c.node_id)}
+                    </button>
+                    {canWrite && (
+                      <button type="button" className="secondary danger" disabled={busy} onClick={() => removeCell(i)}>
+                        Supprimer
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {!pending && !selectedCell && cells.length === 0 && (
             <>
               <h2>Aide</h2>
               <ul className="small">

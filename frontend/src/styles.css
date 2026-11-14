@@ -438,3 +438,6 @@ label.checkbox input { width: auto; }
 .quantity-line > .muted { margin-right: 0.2rem; }
 .quantity-line button.secondary { width: 44px; padding: 0; font-size: 1.3rem; line-height: 1; border-color: var(--accent); color: var(--accent); }
 .quantity-value { min-width: 3.5rem; text-align: center; font-size: 1.4rem; }
+
+.plan-cell-list li { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.3rem 0; }
+.plan-cell-list .danger { padding: 0.25rem 0.6rem; }

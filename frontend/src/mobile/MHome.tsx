@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
+import { Sheet } from "./ui";
 import RowIcon from "../components/RowIcon";
-import type { Dashboard, Loan, MovementEntry, Purchase, SearchHit } from "../types";
+import LocationPicker from "../components/LocationPicker";
+import type { Category, Dashboard, Loan, MovementEntry, NodeDetail, Purchase, SearchHit } from "../types";
 
 /** Accueil mobile : la recherche d'abord, puis ce qu'il y a à faire. Rien ne défile sans recherche. */
 export default function MHome({ statusLabel }: { statusLabel: string | null }) {
@@ -16,6 +18,14 @@ export default function MHome({ statusLabel }: { statusLabel: string | null }) {
   const [dash, setDash] = useState<Dashboard | null>(null);
   const [loans, setLoans] = useState<number | null>(null);
   const [toBuy, setToBuy] = useState<number | null>(null);
+  // Filtres de la recherche : on peut chercher sans rien taper (ex. tout ce qui est prêté).
+  const [lowOnly, setLowOnly] = useState(false);
+  const [lentOnly, setLentOnly] = useState(false);
+  const [categoryId, setCategoryId] = useState("");
+  const [place, setPlace] = useState<NodeDetail | null>(null);
+  const [placeSheet, setPlaceSheet] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const filtered = lowOnly || lentOnly || Boolean(categoryId) || Boolean(place);
   const [recent, setRecent] = useState<{ id: string; name: string }[]>([]);
   const [places] = useState<{ id: string; name: string }[]>(() => {
     try {
@@ -27,6 +37,7 @@ export default function MHome({ statusLabel }: { statusLabel: string | null }) {
   });
 
   useEffect(() => {
+    api.get<Category[]>("/categories").then(setCategories).catch(() => setCategories([]));
     api.get<Dashboard>("/dashboard").then(setDash).catch(() => setDash(null));
     api.get<Loan[]>("/loans?open=true").then((l) => setLoans(l.length)).catch(() => setLoans(null));
     api
@@ -48,14 +59,20 @@ export default function MHome({ statusLabel }: { statusLabel: string | null }) {
   // Recherche au fil de la frappe : pas de bouton à viser, les résultats remplacent les raccourcis.
   useEffect(() => {
     const term = q.trim();
-    if (term.length < 2) {
+    if (term.length < 2 && !filtered) {
       setHits(null);
       setError(null);
       return;
     }
     const timer = window.setTimeout(() => {
+      const qs = new URLSearchParams();
+      if (term.length >= 2) qs.set("q", term);
+      if (lowOnly) qs.set("low_stock", "true");
+      if (lentOnly) qs.set("lent", "true");
+      if (categoryId) qs.set("category_id", categoryId);
+      if (place) qs.set("place_id", place.id);
       api
-        .get<SearchHit[]>(`/search?q=${encodeURIComponent(term)}`)
+        .get<SearchHit[]>(`/search?${qs.toString()}`)
         .then((list) => {
           setHits(list);
           setError(null);
@@ -63,7 +80,7 @@ export default function MHome({ statusLabel }: { statusLabel: string | null }) {
         .catch((e) => setError(e instanceof ApiError ? e.message : "Recherche impossible."));
     }, 250);
     return () => window.clearTimeout(timer);
-  }, [q]);
+  }, [q, lowOnly, lentOnly, categoryId, place, filtered]);
 
   // Anciennes adresses « /?n=… » (QR, liens) : on ouvre l'élément.
   const legacy = params.get("n");
@@ -84,14 +101,46 @@ export default function MHome({ statusLabel }: { statusLabel: string | null }) {
             aria-label="Chercher un objet"
           />
         </div>
+        <div className="m-filters">
+          <button type="button" className={`chip${lowOnly ? " on" : ""}`} onClick={() => setLowOnly(!lowOnly)}>
+            Stock bas
+          </button>
+          <button type="button" className={`chip${lentOnly ? " on" : ""}`} onClick={() => setLentOnly(!lentOnly)}>
+            Prêté
+          </button>
+          <select className={`chip${categoryId ? " on" : ""}`} value={categoryId} onChange={(e) => setCategoryId(e.target.value)} aria-label="Catégorie">
+            <option value="">Catégorie</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <button type="button" className={`chip${place ? " on" : ""}`} onClick={() => (place ? setPlace(null) : setPlaceSheet(true))}>
+            {place ? `${place.name ?? "Lieu"} ✕` : "Lieu"}
+          </button>
+        </div>
       </div>
+
+      {placeSheet && (
+        <Sheet title="Chercher dans quel lieu ?" onClose={() => setPlaceSheet(false)}>
+          <LocationPicker
+            value={place}
+            onChange={(n) => {
+              setPlace(n);
+              if (n) setPlaceSheet(false);
+            }}
+            emptyLabel="tous les lieux"
+          />
+        </Sheet>
+      )}
 
       <div className="m-body">
         {error && <p className="error m-pad">{error}</p>}
 
         {hits && (
           <ul className="m-list">
-            {hits.length === 0 && <li className="m-empty">Aucun résultat pour « {q.trim()} ».</li>}
+            {hits.length === 0 && <li className="m-empty">Aucun résultat{q.trim() ? ` pour « ${q.trim()} »` : ""}.</li>}
             {hits.map((h) => {
               const first = h.locations[0];
               const where =

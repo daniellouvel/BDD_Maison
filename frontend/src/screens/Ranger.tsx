@@ -35,7 +35,7 @@ export default function Ranger() {
   const [catFields, setCatFields] = useState<FieldDef[]>([]);
   const [attributes, setAttributes] = useState<Record<string, AttrValue>>({});
   const [unit, setUnit] = useState("");
-  const [labelCode, setLabelCode] = useState("");
+  const [labelCode, setLabelCode] = useState(() => new URLSearchParams(window.location.search).get("label") ?? "");
   const [photo, setPhoto] = useState<File | null>(null);
   const [existing, setExisting] = useState<Article | null>(null);
   const [suggestions, setSuggestions] = useState<Article[]>([]);

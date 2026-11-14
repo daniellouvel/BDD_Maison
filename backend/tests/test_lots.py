@@ -156,3 +156,29 @@ def test_undo_of_a_move_puts_the_lot_back(admin_client: TestClient) -> None:
     assert last["kind"] == "move" and last["to_path"] == ["B"] and last["from_path"] == ["A"]
     assert admin_client.post(f"{API}/stock/movements/{last['id']}/undo", headers=CSRF).status_code == 201
     assert _node(admin_client, item["id"])["parent_id"] == a["id"]
+
+
+def test_search_filters_by_place_category_low_stock_and_lent(admin_client: TestClient) -> None:
+    a = _article(admin_client, "Vis M3")
+    b = _article(admin_client, "Écrou M3")
+    atelier = _location(admin_client, "Atelier")
+    cave = _location(admin_client, "Cave")
+    boite = admin_client.post(f"{API}/nodes", json={"kind": "container", "name": "Boîte", "parent_id": atelier["id"]}, headers=CSRF).json()
+    item_a = _item(admin_client, a["id"], boite["id"], "4")
+    _item(admin_client, b["id"], cave["id"], "9")
+
+    def names(**params):  # type: ignore[no-untyped-def]
+        r = admin_client.get(f"{API}/search", params=params)
+        assert r.status_code == 200, r.text
+        return sorted(h["article"]["name"] for h in r.json())
+
+    assert names(place_id=atelier["id"]) == ["Vis M3"]  # le lieu inclut ce qu'il contient
+    assert names(q="M3") == ["Vis M3", "Écrou M3"]
+    assert names(q="M3", place_id=cave["id"]) == ["Écrou M3"]
+    assert admin_client.get(f"{API}/search").status_code == 422
+
+    admin_client.patch(f"{API}/articles/{a['id']}", json={"version": a["version"], "min_quantity": "10"}, headers=CSRF)
+    assert names(low_stock="true") == ["Vis M3"]
+
+    admin_client.post(f"{API}/nodes/{item_a['id']}/loan", json={"version": item_a["version"], "recipient": "Paul"}, headers=CSRF)
+    assert names(lent="true") == ["Vis M3"]

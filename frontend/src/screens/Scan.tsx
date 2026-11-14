@@ -174,11 +174,15 @@ function OpenMode() {
       {label?.status === "available" && (
         <section className="card">
           <h2>{label.code} : étiquette vierge</h2>
-          <p className="muted">
-            Pour l'utiliser, ouvrez l'emplacement concerné puis « Ajouter un objet ici » ou « Créer ici », et
-            scannez-la à la fin. Pour un élément existant, ouvrez-le et choisissez « Associer une étiquette ».
-          </p>
-          <Link to={`/qr/labels/${label.code}`}>Détail de l'étiquette</Link>
+          <p className="muted">Cette étiquette n'est encore collée sur rien. Que voulez-vous en faire ?</p>
+          <div className="row">
+            <Link className="button" to={`/ranger?label=${label.code}`}>
+              Ranger un nouvel objet avec elle
+            </Link>
+            <Link className="button secondary" to={`/qr/labels/${label.code}`}>
+              L'affecter à un élément existant
+            </Link>
+          </div>
         </section>
       )}
       {label?.status === "disabled" && (

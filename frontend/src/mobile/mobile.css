@@ -144,3 +144,7 @@
 .m-textsize { display: flex; gap: 0.4rem; padding: 0.2rem 0.75rem 0.6rem; }
 .m-textsize button { flex: 1; min-height: 44px; background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; }
 .m-textsize button.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+
+.m-filters { display: flex; gap: 0.4rem; overflow-x: auto; padding: 0.4rem 0.75rem 0.2rem; scrollbar-width: none; }
+.m-filters .chip, .m-filters select.chip { flex: none; min-height: 36px; border: 1px solid var(--border); background: transparent; color: var(--muted); }
+.m-filters .chip.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }

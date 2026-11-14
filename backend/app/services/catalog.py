@@ -219,8 +219,11 @@ def list_articles(
     category_id: uuid.UUID | None,
     limit: int,
     offset: int,
+    ids: set[uuid.UUID] | None = None,
 ) -> list[Article]:
     stmt: Select[tuple[Article]] = select(Article).where(Article.archived_at.is_(None))
+    if ids is not None:
+        stmt = stmt.where(Article.id.in_(ids))
     if q:
         stmt = stmt.where(*article_text_clause(db, q))
     if category_id is not None:

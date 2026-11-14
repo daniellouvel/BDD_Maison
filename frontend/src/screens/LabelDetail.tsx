@@ -4,7 +4,8 @@ import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
 import Scanner from "../components/Scanner";
 import { EVENT_LABEL, extractCode, fetchLabel, STATUS_LABEL } from "../qr";
-import type { Label } from "../types";
+import LocationPicker from "../components/LocationPicker";
+import type { Label, NodeDetail, SearchHit } from "../types";
 
 /** Fiche d'une étiquette. Sert aussi de cible aux QR encodant une URL (/l/QR-000123). */
 export default function LabelDetail({ redirectAssigned = false }: { redirectAssigned?: boolean }) {
@@ -104,6 +105,13 @@ export default function LabelDetail({ redirectAssigned = false }: { redirectAssi
         {error && <p className="error">{error}</p>}
       </section>
 
+      {canWrite && label.status === "available" && (
+        <AssignExisting
+          code={label.code}
+          onDone={(nodeId) => navigate(`/nodes/${nodeId}`)}
+        />
+      )}
+
       <section className="card">
         <h2>Historique</h2>
         <ul className="list">
@@ -117,5 +125,59 @@ export default function LabelDetail({ redirectAssigned = false }: { redirectAssi
         </ul>
       </section>
     </>
+  );
+}
+
+/** Affecte une étiquette vierge à un lot (par recherche d'objet) ou à un lieu ou une boîte existants. */
+function AssignExisting({ code, onDone }: { code: string; onDone: (nodeId: string) => void }) {
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<SearchHit[]>([]);
+  const [place, setPlace] = useState<NodeDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 2) return setHits([]);
+    const timer = window.setTimeout(() => {
+      api.get<SearchHit[]>(`/search?q=${encodeURIComponent(term)}&limit=8`).then(setHits).catch(() => setHits([]));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [q]);
+
+  async function assign(nodeId: string) {
+    setError(null);
+    try {
+      await api.post(`/qr/labels/${code}/assign`, { node_id: nodeId });
+      onDone(nodeId);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Affectation impossible.");
+    }
+  }
+
+  return (
+    <section className="card">
+      <h2>Affecter à un élément existant</h2>
+      <p className="muted small">Cherchez l'objet (son lot), ou choisissez un lieu ou une boîte.</p>
+      <input type="search" placeholder="Nom de l'objet…" value={q} onChange={(e) => setQ(e.target.value)} />
+      <ul className="list">
+        {hits.flatMap((h) =>
+          h.locations.map((l) => (
+            <li key={l.node_id}>
+              <button type="button" className="linklike" onClick={() => assign(l.node_id)}>
+                {h.article.name} — {l.path.length ? l.path.join(" › ") : "non rangé"} (× {l.quantity})
+              </button>
+            </li>
+          )),
+        )}
+      </ul>
+      <h3>Ou un lieu / une boîte</h3>
+      <LocationPicker value={place} onChange={setPlace} emptyLabel="à choisir" />
+      {place && (
+        <button type="button" onClick={() => assign(place.id)}>
+          Affecter à « {place.name} »
+        </button>
+      )}
+      {error && <p className="error small">{error}</p>}
+    </section>
   );
 }

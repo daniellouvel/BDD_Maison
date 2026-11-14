@@ -19,9 +19,25 @@ export default defineConfig({
         icons: [{ src: "icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }],
       },
       workbox: {
-        // Le cache ne doit jamais servir les réponses de l'API.
         navigateFallbackDenylist: [/^\/api\//],
         globPatterns: ["**/*.{js,css,html,svg,ico,png,webmanifest}"],
+        // Lecture hors ligne : le réseau d'abord, la dernière réponse connue seulement s'il ne répond pas.
+        // Rien n'est servi depuis le cache tant que le serveur répond.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url, request }: { url: URL; request: Request }) =>
+              request.method === "GET" &&
+              url.pathname.startsWith("/api/v1/") &&
+              !/^\/api\/v1\/(auth|export|health)/.test(url.pathname),
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "mw-api-lecture",
+              networkTimeoutSeconds: 4,
+              expiration: { maxEntries: 400, maxAgeSeconds: 7 * 24 * 3600 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+        ],
       },
     }),
   ],

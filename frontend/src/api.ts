@@ -1,4 +1,5 @@
-// Accès unique au serveur. En phase 5, cette couche passera par IndexedDB + file d'attente.
+// Accès unique au serveur. Les mouvements de stock saisis sans réseau passent par la file d'attente (offline.ts).
+import { enqueueMovement } from "./offline";
 
 export class ApiError extends Error {
   constructor(
@@ -10,7 +11,12 @@ export class ApiError extends Error {
   }
 }
 
+export const QUEUED_PREFIX = "queued:";
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  // Un mouvement de stock porte toujours un op_id : rejouable sans risque de doublon.
+  const queueable = method === "POST" && path === "/stock/movements" && body !== undefined && !(body instanceof FormData);
+  if (queueable) body = { op_id: newId(), ...(body as Record<string, unknown>) };
   const headers: Record<string, string> = { "X-Requested-With": "myworkshop" };
   let payload: BodyInit | undefined;
   if (body instanceof FormData) {
@@ -28,10 +34,19 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       credentials: "same-origin",
     });
   } catch {
+    if (queueable) {
+      const opId = enqueueMovement(body as Record<string, unknown>);
+      return { id: `${QUEUED_PREFIX}${opId}`, queued: true } as T;
+    }
     throw new ApiError(0, "network", "Serveur injoignable.");
   }
   if (response.status === 204) return undefined as T;
   const data = await response.json().catch(() => null);
+  // Serveur éteint derrière le proxy (502/503/504, ou 500 sans corps JSON) : même traitement que sans réseau.
+  if (queueable && (response.status === 502 || response.status === 503 || response.status === 504 || (response.status === 500 && data === null))) {
+    const opId = enqueueMovement(body as Record<string, unknown>);
+    return { id: `${QUEUED_PREFIX}${opId}`, queued: true } as T;
+  }
   if (!response.ok) {
     throw new ApiError(
       response.status,

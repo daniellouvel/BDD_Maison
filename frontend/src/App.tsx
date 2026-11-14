@@ -3,7 +3,8 @@ import { NavLink, Route, Routes } from "react-router-dom";
 import { api, ApiError } from "./api";
 import { AuthContext, type AuthState } from "./auth";
 import MobileApp from "./mobile/MobileApp";
-import { Toasts } from "./toast";
+import { flushQueue, onFlushReport, usePending } from "./offline";
+import { notify, Toasts } from "./toast";
 import { readUiChoice, saveUiChoice, usePhone } from "./usePhone";
 import Home from "./screens/Home";
 import Categories from "./screens/Categories";
@@ -27,6 +28,27 @@ function NodeRedirect() {
   return <Navigate to={`/?n=${encodeURIComponent(id ?? "")}`} replace />;
 }
 import type { User } from "./types";
+
+const USER_KEY = "mw_user";
+
+/** Dernier utilisateur connu : permet d'ouvrir l'appli sans réseau (lecture et file d'attente des mouvements). */
+function rememberUser(u: User | null): void {
+  try {
+    if (u) localStorage.setItem(USER_KEY, JSON.stringify(u));
+    else localStorage.removeItem(USER_KEY);
+  } catch {
+    // Stockage indisponible : l'ouverture hors ligne ne sera pas possible.
+  }
+}
+
+function recallUser(): User | null {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? (JSON.parse(raw) as User) : null;
+  } catch {
+    return null;
+  }
+}
 
 type ServerStatus = "online" | "server-down" | "offline";
 
@@ -75,26 +97,60 @@ export default function App() {
   const [ui, setUi] = useState(readUiChoice);
   const [bootError, setBootError] = useState<string | null>(null);
   const status = useServerStatus();
+  const pending = usePending();
+
+  // Retour du réseau (ou serveur à nouveau joignable) : on envoie les mouvements saisis hors ligne.
+  useEffect(() => {
+    onFlushReport((text) => notify(text));
+  }, []);
+  useEffect(() => {
+    if (status === "online") void flushQueue();
+  }, [status, pending]);
+  useEffect(() => {
+    const timer = window.setInterval(() => void flushQueue(), 20_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const queueNote = pending > 0 ? ` · ${pending} à envoyer` : "";
 
   useEffect(() => {
     api
       .get<User>("/auth/me")
-      .then(setUser)
+      .then((u) => {
+        rememberUser(u);
+        setUser(u);
+      })
       .catch((e) => {
-        if (e instanceof ApiError && e.status === 401) setUser(null);
+        if (e instanceof ApiError && e.status === 401) {
+          rememberUser(null);
+          setUser(null);
+          return;
+        }
+        // Serveur ou réseau absent au démarrage : on reprend la dernière session connue (lecture depuis le cache).
+        const known = recallUser();
+        if (known) setUser(known);
         else setBootError(e instanceof ApiError ? e.message : "Serveur injoignable.");
       });
   }, []);
 
   if (bootError) return <p className="center error">{bootError} Rechargez la page quand le serveur répond.</p>;
   if (user === undefined) return <p className="center muted">Chargement…</p>;
-  if (user === null) return <Login onLogin={setUser} />;
+  if (user === null)
+    return (
+      <Login
+        onLogin={(u) => {
+          rememberUser(u);
+          setUser(u);
+        }}
+      />
+    );
 
   const auth: AuthState = {
     user,
     canWrite: user.role !== "lecture",
     logout: async () => {
       await api.post("/auth/logout");
+      rememberUser(null);
+      void caches?.delete("mw-api-lecture");
       setUser(null);
     },
   };
@@ -103,7 +159,7 @@ export default function App() {
     return (
       <AuthContext.Provider value={auth}>
         <MobileApp
-          statusLabel={status === "online" ? null : STATUS_LABEL[status]}
+          statusLabel={status === "online" && pending === 0 ? null : `${STATUS_LABEL[status]}${queueNote}`}
           onClassic={() => {
             saveUiChoice("classic");
             setUi("classic");
@@ -121,7 +177,7 @@ export default function App() {
         <NavLink to="/" className="brand">
           MyWorkshop
         </NavLink>
-        <span className={`status status-${status}`}>● {STATUS_LABEL[status]}</span>
+        <span className={`status status-${status}`}>● {STATUS_LABEL[status]}{queueNote}</span>
       </header>
       <main className="content">
         <Routes>

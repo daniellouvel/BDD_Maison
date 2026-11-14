@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { api, ApiError } from "./api";
+import { api, ApiError, QUEUED_PREFIX } from "./api";
+import { dropQueued } from "./offline";
 
 type ToastData = { id: number; text: string; undo?: () => Promise<void> };
 type Listener = (t: ToastData | null) => void;
@@ -15,6 +16,12 @@ export function notify(text: string, undo?: () => Promise<void>): void {
 /** Annule un mouvement de stock déjà enregistré (l'inverse est écrit au journal). */
 export function undoMovement(movementId: string, onDone?: () => void): () => Promise<void> {
   return async () => {
+    if (movementId.startsWith(QUEUED_PREFIX)) {
+      // Pas encore envoyé : on le retire simplement de la file.
+      notify(dropQueued(movementId.slice(QUEUED_PREFIX.length)) ? "Annulé" : "Déjà envoyé : annulez-le depuis l'historique");
+      onDone?.();
+      return;
+    }
     try {
       await api.post(`/stock/movements/${movementId}/undo`);
       notify("Annulé");

@@ -78,7 +78,33 @@ export default function MArticle() {
     setBusy(true);
     setError(null);
     try {
-      const m = await api.post<{ id: string }>("/stock/movements", { node_id: target.node_id, kind, delta: "1" });
+      const m = await api.post<{ id: string; queued?: boolean }>("/stock/movements", { node_id: target.node_id, kind, delta: "1" });
+      if (m.queued) {
+        // Sans réseau : le mouvement part au retour du serveur ; on met l'affichage à jour tout de suite.
+        const sign = kind === "out" ? -1 : 1;
+        const shift = (q: string) => String(Number(q) + sign);
+        setArticle((a) =>
+          a
+            ? {
+                ...a,
+                total_quantity: shift(a.total_quantity),
+                locations: a.locations.map((l) => (l.node_id === target.node_id ? { ...l, quantity: shift(l.quantity) } : l)),
+              }
+            : a,
+        );
+        notify("Hors ligne : sera envoyé au retour du réseau", undoMovement(m.id, () => {
+          setArticle((a) =>
+            a
+              ? {
+                  ...a,
+                  total_quantity: String(Number(a.total_quantity) - sign),
+                  locations: a.locations.map((l) => (l.node_id === target.node_id ? { ...l, quantity: String(Number(l.quantity) - sign) } : l)),
+                }
+              : a,
+          );
+        }));
+        return;
+      }
       notify(kind === "out" ? "Retiré 1" : "Ajouté 1", undoMovement(m.id, () => void load()));
       await load();
     } catch (e) {

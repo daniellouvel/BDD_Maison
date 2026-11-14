@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError, conflict_version
-from app.models import Article, Category, FieldDef, Node, NodeType, User, utcnow
+from app.models import Article, Attachment, Category, FieldDef, Node, NodeType, User, utcnow
 from app.schemas import (
     CategoryPatch,
     FieldDefPatch,
@@ -377,3 +377,18 @@ def delete_field(db: Session, category_id: uuid.UUID, field_id: uuid.UUID, actor
     audit(db, "field_def", field, actor, "delete")
     db.delete(field)
     db.commit()
+
+
+def main_photos(db: Session, article_ids: list[uuid.UUID]) -> dict[uuid.UUID, uuid.UUID]:
+    """Photo à afficher pour chaque article : la principale, sinon la plus ancienne."""
+    if not article_ids:
+        return {}
+    rows = db.execute(
+        select(Attachment.article_id, Attachment.id)
+        .where(Attachment.article_id.in_(article_ids), Attachment.kind == "photo", Attachment.thumb_key.is_not(None))
+        .order_by(Attachment.article_id, Attachment.is_main.desc(), Attachment.created_at)
+    ).all()
+    found: dict[uuid.UUID, uuid.UUID] = {}
+    for article_id, attachment_id in rows:
+        found.setdefault(article_id, attachment_id)
+    return found

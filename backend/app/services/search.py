@@ -17,9 +17,11 @@ from app.services import nodes as node_service
 def search_articles(db: Session, q: str, limit: int = 50) -> list[SearchHit]:
     articles = catalog.list_articles(db, q=q, category_id=None, limit=limit, offset=0)
     totals = stock.totals_by_article(db, [a.id for a in articles])
+    photos = catalog.main_photos(db, [a.id for a in articles])
     return [
         SearchHit(
             article=ArticleOut.model_validate(a),
+            photo_id=photos.get(a.id),
             total_quantity=totals.get(a.id, Decimal(0)),
             locations=stock.locations_for(db, a.id),
         )

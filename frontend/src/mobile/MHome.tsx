@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
-import type { Dashboard, Loan, Purchase, SearchHit } from "../types";
+import RowIcon from "../components/RowIcon";
+import type { Dashboard, Loan, MovementEntry, Purchase, SearchHit } from "../types";
 
 /** Accueil mobile : la recherche d'abord, puis ce qu'il y a à faire. Rien ne défile sans recherche. */
 export default function MHome({ statusLabel }: { statusLabel: string | null }) {
@@ -15,10 +16,32 @@ export default function MHome({ statusLabel }: { statusLabel: string | null }) {
   const [dash, setDash] = useState<Dashboard | null>(null);
   const [loans, setLoans] = useState<number | null>(null);
   const [toBuy, setToBuy] = useState<number | null>(null);
+  const [recent, setRecent] = useState<{ id: string; name: string }[]>([]);
+  const [places] = useState<{ id: string; name: string }[]>(() => {
+    try {
+      const list = JSON.parse(localStorage.getItem("mw_recent_places") ?? "[]");
+      return Array.isArray(list) ? list.slice(0, 6) : [];
+    } catch {
+      return [];
+    }
+  });
 
   useEffect(() => {
     api.get<Dashboard>("/dashboard").then(setDash).catch(() => setDash(null));
     api.get<Loan[]>("/loans?open=true").then((l) => setLoans(l.length)).catch(() => setLoans(null));
+    api
+      .get<MovementEntry[]>("/stock/history?limit=40")
+      .then((rows) => {
+        const seen = new Set<string>();
+        const list: { id: string; name: string }[] = [];
+        for (const r of rows) {
+          if (seen.has(r.article_id)) continue;
+          seen.add(r.article_id);
+          list.push({ id: r.article_id, name: r.article_name });
+        }
+        setRecent(list.slice(0, 8));
+      })
+      .catch(() => setRecent([]));
     api.get<Purchase[]>("/purchases?status=to_buy").then((p) => setToBuy(p.length)).catch(() => setToBuy(null));
   }, []);
 
@@ -78,7 +101,7 @@ export default function MHome({ statusLabel }: { statusLabel: string | null }) {
               return (
                 <li key={h.article.id}>
                   <button type="button" className="m-row" onClick={() => navigate(`/a/${h.article.id}`)}>
-                    <span className="ic">🔩</span>
+                    <RowIcon photoId={h.photo_id} fallback="🔩" />
                     <span className="txt">
                       <b>{h.article.name}</b>
                       <small>{where}</small>
@@ -113,6 +136,30 @@ export default function MHome({ statusLabel }: { statusLabel: string | null }) {
                 <span>Prêts en cours</span>
               </Link>
             </div>
+            {recent.length > 0 && (
+              <>
+                <p className="m-group">Récemment utilisés</p>
+                <div className="m-chips">
+                  {recent.map((r) => (
+                    <Link key={r.id} to={`/a/${r.id}`} className="chip">
+                      {r.name}
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
+            {places.length > 0 && (
+              <>
+                <p className="m-group">Mes lieux</p>
+                <div className="m-chips">
+                  {places.map((r) => (
+                    <Link key={r.id} to={`/e/${r.id}`} className="chip">
+                      {r.name}
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
             {canWrite && (
               <Link to="/ranger" className="m-big">
                 ＋ Ranger un objet

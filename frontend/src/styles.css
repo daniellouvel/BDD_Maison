@@ -316,7 +316,7 @@ label.checkbox input { width: auto; }
 /* Une liste déroulante ne dépasse jamais de sa carte, même avec un libellé long. */
 .detail-card select { max-width: 100%; }
 .content-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.5rem; }
-.content-card { display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem; text-align: left; padding: 0.6rem; border-radius: 10px; border: 1px solid var(--border); background: #fff; color: inherit; font-weight: normal; min-height: auto; }
+.content-card { display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem; text-align: left; padding: 0.6rem; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: inherit; font-weight: normal; min-height: auto; }
 .content-card span { font-size: 1.2rem; }
 .kind-chip { display: inline-block; font-size: 0.72rem; padding: 0.1rem 0.5rem; border-radius: 999px; border: 1px solid var(--border); color: var(--muted, #555); }
 .ribbon { display: inline-block; margin-left: 0.4rem; font-size: 0.75rem; padding: 0.1rem 0.5rem; border-radius: 4px; background: #f59e0b; color: #fff; }
@@ -337,7 +337,7 @@ label.checkbox input { width: auto; }
 /* Vues enregistrées */
 .save-view { margin: -0.4rem 0 0.8rem; font-size: 0.9rem; }
 .saved-views { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.4rem 0 0; }
-.saved-views a { padding: 0.3rem 0.7rem; border-radius: 999px; border: 1px solid var(--border); background: #fff; text-decoration: none; color: inherit; font-size: 0.9rem; }
+.saved-views a { padding: 0.3rem 0.7rem; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); text-decoration: none; color: inherit; font-size: 0.9rem; }
 
 /* Accueil « explorateur » (étape 1) */
 .explorer-top { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: flex-start; justify-content: space-between; margin-bottom: 0.8rem; }
@@ -367,7 +367,7 @@ label.checkbox input { width: auto; }
 .save-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
 /* Déplacement : bloc compact dans la colonne de l'arbre (sans bandeau jaune) */
-.move-inline { border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.7rem; margin-bottom: 0.6rem; background: #fff; }
+.move-inline { border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.7rem; margin-bottom: 0.6rem; background: var(--surface); }
 .move-inline p { margin: 0 0 0.4rem; font-size: 0.9rem; }
 .move-confirm { margin-top: 0.5rem; padding: 0.5rem 0.6rem; border-radius: 8px; background: rgba(180, 83, 9, 0.08); }
 .move-confirm p { margin: 0 0 0.4rem; font-size: 0.9rem; }

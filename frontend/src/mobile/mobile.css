@@ -135,3 +135,12 @@
 .wiz-foot { flex: none; display: flex; gap: 0.4rem; padding: 0.5rem 0.75rem; border-top: 1px solid var(--border); background: var(--surface); }
 .wiz-foot:empty { display: none; }
 .wiz-foot > * { flex: 1; min-height: 46px; }
+
+.m-row .ic-photo { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; background: var(--border); }
+
+.m-chips { display: flex; gap: 0.4rem; overflow-x: auto; padding: 0 0.75rem 0.4rem; scrollbar-width: none; }
+.m-chips .chip { flex: none; text-decoration: none; color: inherit; white-space: nowrap; }
+
+.m-textsize { display: flex; gap: 0.4rem; padding: 0.2rem 0.75rem 0.6rem; }
+.m-textsize button { flex: 1; min-height: 44px; background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; }
+.m-textsize button.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }

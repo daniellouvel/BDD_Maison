@@ -164,6 +164,7 @@ class NodeOut(_Base):
     updated_at: dt.datetime
     slug: str | None = None
     status: str = "in_stock"
+    photo_id: uuid.UUID | None = None
 
 
 class PlaceHit(BaseModel):
@@ -399,6 +400,7 @@ class QrStats(BaseModel):
 
 class SearchHit(BaseModel):
     article: ArticleOut
+    photo_id: uuid.UUID | None = None
     total_quantity: Decimal
     locations: list[LocationRef]
 

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Navigate, NavLink, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../auth";
 import Achats from "../screens/Achats";
@@ -16,6 +17,7 @@ import MArticle from "./MArticle";
 import MHome, { MLowStock } from "./MHome";
 import MNode from "./MNode";
 import MShopping from "./MShopping";
+import { readTextSize, applyTextSize, type TextSize } from "../textSize";
 import { MHeader, MPage } from "./ui";
 import "./mobile.css";
 
@@ -85,6 +87,7 @@ export default function MobileApp({ statusLabel, onClassic }: { statusLabel: str
 }
 
 function MMore({ onClassic }: { onClassic: () => void }) {
+  const [size, setSize] = useState<TextSize>(readTextSize);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const go = (to: string, icon: string, label: string, hint?: string) => (
@@ -114,6 +117,21 @@ function MMore({ onClassic }: { onClassic: () => void }) {
           {go("/reglages", "⚙️", "Réglages")}
         </ul>
         <p className="m-group">Affichage</p>
+        <div className="m-textsize" role="group" aria-label="Taille du texte">
+          {([["normal", "Texte normal"], ["grand", "Grand"], ["tres-grand", "Très grand"]] as const).map(([value, text]) => (
+            <button
+              key={value}
+              type="button"
+              className={size === value ? "on" : ""}
+              onClick={() => {
+                setSize(value);
+                applyTextSize(value);
+              }}
+            >
+              {text}
+            </button>
+          ))}
+        </div>
         <ul className="m-list">
           <li>
             <button type="button" className="m-row" onClick={onClassic}>

@@ -10,6 +10,7 @@ import { normalizeCode } from "../qr";
 import type { Node, NodeDetail, NodeKind } from "../types";
 import { MHeader, Segmented, Sheet } from "./ui";
 
+import RowIcon from "../components/RowIcon";
 const ICON: Record<NodeKind, string> = { location: "🏠", container: "📦", item: "🔩" };
 
 type SheetName = "menu" | "add" | "rename" | "move" | "label" | "plan" | null;
@@ -103,7 +104,7 @@ export default function MNode() {
     list.map((k) => (
       <li key={k.id}>
         <button type="button" className="m-row" onClick={() => open(k)}>
-          <span className="ic">{ICON[k.kind]}</span>
+          <RowIcon photoId={k.photo_id} fallback={ICON[k.kind]} />
           <span className="txt">
             <b>{label(k)}</b>
           </span>

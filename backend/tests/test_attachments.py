@@ -66,3 +66,18 @@ def test_first_photo_is_main_and_main_can_change_or_be_deleted(admin_client: Tes
     assert admin_client.get(f"{API}/attachments/{second['id']}/file").status_code == 404
     rest = admin_client.get(f"{API}/attachments?article_id={article['id']}").json()
     assert len(rest) == 1 and rest[0]["id"] == first["id"] and rest[0]["is_main"] is True
+
+
+def test_search_and_node_lists_expose_the_article_photo(admin_client: TestClient, photo_bytes: bytes) -> None:
+    article = _article(admin_client)
+    photo = _photo(admin_client, article["id"], photo_bytes)
+    place = admin_client.post(f"{API}/nodes", json={"kind": "location", "name": "Tiroir"}, headers=CSRF).json()
+    admin_client.post(
+        f"{API}/nodes",
+        json={"kind": "item", "article_id": article["id"], "parent_id": place["id"], "quantity": "1"},
+        headers=CSRF,
+    )
+    hit = admin_client.get(f"{API}/search", params={"q": "ESP32"}).json()[0]
+    assert hit["photo_id"] == photo["id"]
+    rows = admin_client.get(f"{API}/nodes", params={"parent_id": place["id"]}).json()
+    assert rows[0]["photo_id"] == photo["id"]

@@ -7,6 +7,7 @@ from app.api.deps import CurrentUser, DbSession, Writer
 from app.core.errors import not_found
 from app.models import Node
 from app.schemas import LayoutIn, NodeDetail, NodeIn, NodeOut, NodePatch, PlaceHit
+from app.services import catalog as catalog_service
 from app.services import nodes as node_service
 
 router = APIRouter(prefix="/nodes", tags=["emplacements"])
@@ -18,7 +19,11 @@ def list_children(
     _: CurrentUser,
     parent_id: uuid.UUID | None = Query(default=None, description="Absent = racine"),
 ) -> list[Node]:
-    return node_service.children(db, parent_id)
+    rows = node_service.children(db, parent_id)
+    photos = catalog_service.main_photos(db, [n.article_id for n in rows if n.article_id])
+    for n in rows:
+        n.photo_id = photos.get(n.article_id) if n.article_id else None  # type: ignore[attr-defined]
+    return rows
 
 
 @router.get("/find", response_model=list[PlaceHit])

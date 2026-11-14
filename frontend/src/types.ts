@@ -58,6 +58,7 @@ export interface ArticleDetail extends Article {
 export type NodeKind = "location" | "container" | "item";
 
 export interface Node {
+  photo_id?: string | null;
   id: string;
   parent_id: string | null;
   kind: NodeKind;
@@ -219,6 +220,7 @@ export interface Attachment {
 
 export interface SearchHit {
   article: Article;
+  photo_id?: string | null;
   total_quantity: string;
   locations: LocationRef[];
 }

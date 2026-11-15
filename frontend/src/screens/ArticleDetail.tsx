@@ -44,7 +44,8 @@ function readHidden(): string[] {
   }
 }
 
-export default function ArticleDetailScreen({ articleId }: { articleId?: string } = {}) {
+/** `embedded` : affiché dans la fiche mobile, où le stock et l'historique ont déjà leurs onglets. */
+export default function ArticleDetailScreen({ articleId, embedded = false }: { articleId?: string; embedded?: boolean } = {}) {
   const params = useParams();
   const id = articleId ?? params.id;
   const { canWrite } = useAuth();
@@ -59,7 +60,7 @@ export default function ArticleDetailScreen({ articleId }: { articleId?: string 
   const [hidden, setHidden] = useState<string[]>(readHidden);
   const [configOpen, setConfigOpen] = useState(false);
 
-  const show = (key: string) => !hidden.includes(key);
+  const show = (key: string) => !hidden.includes(key) && !(embedded && key === "stock");
   function setVisible(key: string, visible: boolean) {
     const next = visible ? hidden.filter((k) => k !== key) : [...hidden, key];
     setHidden(next);
@@ -410,7 +411,7 @@ export default function ArticleDetailScreen({ articleId }: { articleId?: string 
         </Fold>
       )}
 
-      {show("stock") && (
+      {!embedded && show("stock") && (
         <Fold title="Historique">
           <section className="card">
             <h2>Historique</h2>

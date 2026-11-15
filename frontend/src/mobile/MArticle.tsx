@@ -198,7 +198,7 @@ export default function MArticle() {
         {article && tab === "fiche" && canWrite && (
           <button
             type="button"
-            className="secondary"
+            className="linklike"
             onClick={async () => {
               try {
                 const copy = await api.post<{ id: string }>("/articles", {
@@ -222,7 +222,7 @@ export default function MArticle() {
           </button>
         )}
 
-        {article && tab === "fiche" && <ArticleDetailScreen articleId={article.id} />}
+        {article && tab === "fiche" && <ArticleDetailScreen articleId={article.id} embedded />}
       </div>
 
       {lot && tab === "stock" && (

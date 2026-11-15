@@ -20,7 +20,7 @@ export default defineConfig({
       },
       workbox: {
         navigateFallbackDenylist: [/^\/api\//],
-        globPatterns: ["**/*.{js,css,html,svg,ico,png,webmanifest}"],
+        globPatterns: ["**/*.{js,css,html,svg,ico,png,webmanifest,woff2}"],
         // Lecture hors ligne : le réseau d'abord, la dernière réponse connue seulement s'il ne répond pas.
         // Rien n'est servi depuis le cache tant que le serveur répond.
         runtimeCaching: [

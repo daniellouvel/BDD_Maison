@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import "@fontsource/barlow/400.css";
+import "@fontsource/barlow/600.css";
+import "@fontsource/barlow-condensed/600.css";
+import "@fontsource/barlow-condensed/700.css";
 import { api, ApiError, formatQty } from "../api";
 import { useAuth } from "../auth";
 import { Sheet } from "./ui";
@@ -87,7 +91,7 @@ export default function MHome({ statusLabel }: { statusLabel: string | null }) {
   if (legacy) return <Navigate to={`/e/${encodeURIComponent(legacy)}`} replace />;
 
   return (
-    <div className="m-view">
+    <div className="m-view m-home">
       <div className="m-home-top">
         <h1>
           MyWorkshop {statusLabel && <small>● {statusLabel}</small>}
@@ -167,30 +171,30 @@ export default function MHome({ statusLabel }: { statusLabel: string | null }) {
 
         {!hits && (
           <>
-            <div className="m-tiles">
-              <Link to="/lieux" className={`m-tile${dash && dash.unlocated.length > 0 ? " alert" : ""}`}>
-                <b>{dash ? dash.unlocated.length : "…"}</b>
-                <span>À ranger</span>
+            <div className="m-cabinet" role="group" aria-label="Ce qui demande votre attention">
+              <Link to="/lieux" className={`m-drawer${dash && dash.unlocated.length > 0 ? " alert" : ""}`}>
+                <span className="count">{dash ? dash.unlocated.length : "…"}</span>
+                <span className="tag">À ranger</span>
               </Link>
-              <Link to="/stock-bas" className={`m-tile${dash && dash.low_stock.length > 0 ? " alert" : ""}`}>
-                <b>{dash ? dash.low_stock.length : "…"}</b>
-                <span>Stock bas</span>
+              <Link to="/stock-bas" className={`m-drawer${dash && dash.low_stock.length > 0 ? " alert" : ""}`}>
+                <span className="count">{dash ? dash.low_stock.length : "…"}</span>
+                <span className="tag">Stock bas</span>
               </Link>
-              <Link to="/achats" className="m-tile">
-                <b>{toBuy ?? "…"}</b>
-                <span>À acheter</span>
+              <Link to="/achats" className="m-drawer">
+                <span className="count">{toBuy ?? "…"}</span>
+                <span className="tag">À acheter</span>
               </Link>
-              <Link to="/prets" className="m-tile">
-                <b>{loans ?? "…"}</b>
-                <span>Prêts en cours</span>
+              <Link to="/prets" className="m-drawer">
+                <span className="count">{loans ?? "…"}</span>
+                <span className="tag">Prêts en cours</span>
               </Link>
             </div>
             {recent.length > 0 && (
               <>
-                <p className="m-group">Récemment utilisés</p>
+                <p className="m-sub">Repris récemment</p>
                 <div className="m-chips">
                   {recent.map((r) => (
-                    <Link key={r.id} to={`/a/${r.id}`} className="chip">
+                    <Link key={r.id} to={`/a/${r.id}`} className="m-part">
                       {r.name}
                     </Link>
                   ))}
@@ -199,10 +203,10 @@ export default function MHome({ statusLabel }: { statusLabel: string | null }) {
             )}
             {places.length > 0 && (
               <>
-                <p className="m-group">Mes lieux</p>
+                <p className="m-sub">Vos lieux</p>
                 <div className="m-chips">
                   {places.map((r) => (
-                    <Link key={r.id} to={`/e/${r.id}`} className="chip">
+                    <Link key={r.id} to={`/e/${r.id}`} className="m-part place">
                       {r.name}
                     </Link>
                   ))}
@@ -210,8 +214,8 @@ export default function MHome({ statusLabel }: { statusLabel: string | null }) {
               </>
             )}
             {canWrite && (
-              <Link to="/ranger" className="m-big">
-                ＋ Ranger un objet
+              <Link to="/ranger" className="m-big m-key">
+                <span aria-hidden="true">＋</span> Ranger un objet
               </Link>
             )}
           </>

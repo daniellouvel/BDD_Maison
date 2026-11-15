@@ -32,3 +32,22 @@ export function saveUiChoice(choice: "mobile" | "classic"): void {
     // Stockage indisponible (navigation privée) : le choix vaut pour cette session seulement.
   }
 }
+
+const DESK_KEY = "mw_ui_desk";
+
+/** Présentation du PC : « new » (les écrans du téléphone en large, par défaut) ou « classic » (l'ancienne). */
+export function readDeskChoice(): "new" | "classic" {
+  try {
+    return window.localStorage.getItem(DESK_KEY) === "classic" ? "classic" : "new";
+  } catch {
+    return "new";
+  }
+}
+
+export function saveDeskChoice(choice: "new" | "classic"): void {
+  try {
+    window.localStorage.setItem(DESK_KEY, choice);
+  } catch {
+    // Choix valable pour cette session seulement.
+  }
+}

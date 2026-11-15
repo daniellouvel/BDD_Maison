@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { NavLink, Route, Routes } from "react-router-dom";
 import { api, ApiError } from "./api";
 import { AuthContext, type AuthState } from "./auth";
-import MobileApp from "./mobile/MobileApp";
+import MobileApp, { MobileRoutes } from "./mobile/MobileApp";
 import { flushQueue, onFlushReport, usePending } from "./offline";
 import { notify, Toasts } from "./toast";
-import { readUiChoice, saveUiChoice, usePhone } from "./usePhone";
+import { readDeskChoice, readUiChoice, saveDeskChoice, saveUiChoice, usePhone } from "./usePhone";
 import Home from "./screens/Home";
 import Categories from "./screens/Categories";
 import LabelDetail from "./screens/LabelDetail";
@@ -95,6 +95,7 @@ export default function App() {
   // Sur téléphone, l'interface mobile est le choix par défaut ; l'interface classique reste disponible.
   const phone = usePhone();
   const [ui, setUi] = useState(readUiChoice);
+  const [desk, setDesk] = useState(readDeskChoice);
   const [bootError, setBootError] = useState<string | null>(null);
   const status = useServerStatus();
   const pending = usePending();
@@ -170,6 +171,9 @@ export default function App() {
     );
   }
 
+  // PC : les écrans du téléphone en large (par défaut), ou l'ancienne présentation.
+  const wide = !phone && desk === "new";
+
   return (
     <AuthContext.Provider value={auth}>
       <Toasts />
@@ -179,32 +183,52 @@ export default function App() {
         </NavLink>
         <span className={`status status-${status}`}>● {STATUS_LABEL[status]}{queueNote}</span>
       </header>
-      <main className="content">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/ranger" element={<Ranger />} />
-          <Route path="/plan/:id" element={<PlanEditor />} />
-          <Route path="/plans" element={<Plans />} />
-          <Route path="/plans/:id" element={<PlanModelEditor />} />
-          <Route path="/achats" element={<Achats />} />
-          <Route path="/fournisseurs" element={<Fournisseurs />} />
-          <Route path="/prets" element={<Prets />} />
-          <Route path="/categories" element={<Categories />} />
-          <Route path="/scan" element={<Scan />} />
-          <Route path="/reglages" element={<Settings />} />
-          <Route path="/qr" element={<QrManager />} />
-          <Route path="/qr/labels/:code" element={<LabelDetail />} />
-          {/* Cible des QR encodant une URL : ouvre directement l'élément étiqueté */}
-          <Route path="/l/:code" element={<LabelDetail redirectAssigned />} />
-          {/* Anciennes adresses d'éléments : on ouvre l'accueil, sur l'élément */}
-          <Route path="/nodes/:id" element={<NodeRedirect />} />
-          <Route path="*" element={<Home />} />
-        </Routes>
-      </main>
+      {wide ? (
+        <main className="stage">
+          <MobileRoutes
+            desktop
+            onClassic={() => undefined}
+            extra={
+              <Route
+                path="/explorateur"
+                element={
+                  <div className="d-classic">
+                    <Home />
+                  </div>
+                }
+              />
+            }
+          />
+        </main>
+      ) : (
+        <main className="content">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/ranger" element={<Ranger />} />
+            <Route path="/plan/:id" element={<PlanEditor />} />
+            <Route path="/plans" element={<Plans />} />
+            <Route path="/plans/:id" element={<PlanModelEditor />} />
+            <Route path="/achats" element={<Achats />} />
+            <Route path="/fournisseurs" element={<Fournisseurs />} />
+            <Route path="/prets" element={<Prets />} />
+            <Route path="/categories" element={<Categories />} />
+            <Route path="/scan" element={<Scan />} />
+            <Route path="/reglages" element={<Settings />} />
+            <Route path="/qr" element={<QrManager />} />
+            <Route path="/qr/labels/:code" element={<LabelDetail />} />
+            {/* Cible des QR encodant une URL : ouvre directement l'élément étiqueté */}
+            <Route path="/l/:code" element={<LabelDetail redirectAssigned />} />
+            {/* Anciennes adresses d'éléments : on ouvre l'accueil, sur l'élément */}
+            <Route path="/nodes/:id" element={<NodeRedirect />} />
+            <Route path="*" element={<Home />} />
+          </Routes>
+        </main>
+      )}
       <nav className="sidebar" aria-label="Menu principal">
         <NavLink to="/" end>
           Accueil
         </NavLink>
+        {wide && <NavLink to="/lieux">Lieux</NavLink>}
         <NavLink to="/ranger">Ranger</NavLink>
         <NavLink to="/scan">Scanner</NavLink>
         <NavLink to="/categories">Catégories</NavLink>
@@ -214,6 +238,24 @@ export default function App() {
         <NavLink to="/prets">Prêts</NavLink>
         <NavLink to="/qr">Étiquettes QR</NavLink>
         <NavLink to="/reglages">Réglages</NavLink>
+        {wide && <NavLink to="/explorateur">Explorateur (arbre)</NavLink>}
+        <p className="side-user">
+          {user.username} ·{" "}
+          <button type="button" className="linklike" onClick={auth.logout}>
+            Se déconnecter
+          </button>
+        </p>
+        <button
+          type="button"
+          className="secondary side-switch"
+          onClick={() => {
+            const next = wide ? "classic" : "new";
+            saveDeskChoice(next);
+            setDesk(next);
+          }}
+        >
+          {wide ? "Ancienne présentation" : "Nouvelle présentation"}
+        </button>
       </nav>
       <nav className="bottombar" aria-label="Navigation">
         <NavLink to="/" end>

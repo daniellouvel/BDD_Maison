@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { Navigate, NavLink, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../auth";
 import Achats from "../screens/Achats";
@@ -28,6 +29,43 @@ function NodeRedirect() {
 }
 
 /**
+ * Les écrans de l'interface mobile. Le téléphone les affiche dans sa coque (onglets en bas) ;
+ * le PC les affiche en large dans sa propre coque, avec la barre latérale (`extra` ajoute ses écrans).
+ */
+export function MobileRoutes({ onClassic, extra, desktop = false }: { onClassic: () => void; extra?: ReactNode; desktop?: boolean }) {
+  const back = desktop ? undefined : "/plus";
+  return (
+    <Routes>
+      <Route path="/" element={<MHome statusLabel={null} />} />
+      <Route path="/lieux" element={<MNode />} />
+      <Route path="/e/:id" element={<MNode />} />
+      <Route path="/a/:id" element={<MArticle />} />
+      <Route path="/achats" element={<MShopping />} />
+      <Route path="/plus" element={desktop ? <Navigate to="/" replace /> : <MMore onClassic={onClassic} />} />
+      <Route path="/stock-bas" element={<MPage title="Stock bas" back="/"><MLowStock /></MPage>} />
+      {extra}
+
+      {/* Écrans de l'interface classique, affichés dans la coque mobile. */}
+      <Route path="/scan" element={<MPage title="Scanner" back="/"><Scan /></MPage>} />
+      <Route path="/ranger" element={<MPage title="Ranger"><Ranger /></MPage>} />
+      <Route path="/achats/prix" element={<MPage title="Prix et fournisseurs" back="/achats"><Achats /></MPage>} />
+      <Route path="/prets" element={<MPage title="Prêts"><Prets /></MPage>} />
+      <Route path="/fournisseurs" element={<MPage title="Fournisseurs" back={back}><Fournisseurs /></MPage>} />
+      <Route path="/categories" element={<MPage title="Catégories" back={back}><Categories /></MPage>} />
+      <Route path="/plans" element={<MPage title="Plans" back={back}><Plans /></MPage>} />
+      <Route path="/plans/:id" element={<MPage title="Modèle de plan" back="/plans" keepTitle><PlanModelEditor /></MPage>} />
+      <Route path="/plan/:id" element={<MPage title="Plan" keepTitle><PlanEditor /></MPage>} />
+      <Route path="/qr" element={<MPage title="Étiquettes QR" back={back}><QrManager /></MPage>} />
+      <Route path="/qr/labels/:code" element={<MPage title="Étiquette" keepTitle><LabelDetail /></MPage>} />
+      <Route path="/l/:code" element={<MPage title="Étiquette" back="/" keepTitle><LabelDetail redirectAssigned /></MPage>} />
+      <Route path="/reglages" element={<MPage title="Réglages" back={back}><Settings /></MPage>} />
+      <Route path="/nodes/:id" element={<NodeRedirect />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+/**
  * Interface pensée pour le téléphone : l'application tient dans l'écran, sans défilement de page.
  * Cinq onglets en bas, Scanner au centre. Les écrans rarement utilisés sur téléphone (plans,
  * étiquettes, catégories…) reprennent ceux de l'interface classique, rangés dans « Plus ».
@@ -37,32 +75,7 @@ export default function MobileApp({ statusLabel, onClassic }: { statusLabel: str
     <div className="m-app">
       {statusLabel && <div className="m-offline">{statusLabel}</div>}
       <div className="m-screen">
-        <Routes>
-          <Route path="/" element={<MHome statusLabel={null} />} />
-          <Route path="/lieux" element={<MNode />} />
-          <Route path="/e/:id" element={<MNode />} />
-          <Route path="/a/:id" element={<MArticle />} />
-          <Route path="/achats" element={<MShopping />} />
-          <Route path="/plus" element={<MMore onClassic={onClassic} />} />
-          <Route path="/stock-bas" element={<MPage title="Stock bas" back="/"><MLowStock /></MPage>} />
-
-          {/* Écrans de l'interface classique, affichés dans la coque mobile. */}
-          <Route path="/scan" element={<MPage title="Scanner" back="/"><Scan /></MPage>} />
-          <Route path="/ranger" element={<MPage title="Ranger"><Ranger /></MPage>} />
-          <Route path="/achats/prix" element={<MPage title="Prix et fournisseurs" back="/achats"><Achats /></MPage>} />
-          <Route path="/prets" element={<MPage title="Prêts"><Prets /></MPage>} />
-          <Route path="/fournisseurs" element={<MPage title="Fournisseurs" back="/plus"><Fournisseurs /></MPage>} />
-          <Route path="/categories" element={<MPage title="Catégories" back="/plus"><Categories /></MPage>} />
-          <Route path="/plans" element={<MPage title="Plans" back="/plus"><Plans /></MPage>} />
-          <Route path="/plans/:id" element={<MPage title="Modèle de plan" back="/plans" keepTitle><PlanModelEditor /></MPage>} />
-          <Route path="/plan/:id" element={<MPage title="Plan" keepTitle><PlanEditor /></MPage>} />
-          <Route path="/qr" element={<MPage title="Étiquettes QR" back="/plus"><QrManager /></MPage>} />
-          <Route path="/qr/labels/:code" element={<MPage title="Étiquette" keepTitle><LabelDetail /></MPage>} />
-          <Route path="/l/:code" element={<MPage title="Étiquette" back="/" keepTitle><LabelDetail redirectAssigned /></MPage>} />
-          <Route path="/reglages" element={<MPage title="Réglages" back="/plus"><Settings /></MPage>} />
-          <Route path="/nodes/:id" element={<NodeRedirect />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <MobileRoutes onClassic={onClassic} />
       </div>
 
       <nav className="m-tabs" aria-label="Navigation">

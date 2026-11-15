@@ -470,3 +470,37 @@ label.checkbox input { width: auto; }
 .linklike, .org-caret, .org-name, .phone-back, .m-icon { box-shadow: none; }
 .linklike:active, .org-caret:active, .org-name:active, .phone-back:active, .m-icon:active { transform: none; }
 .org-tree ul, .explorer-tree ul { list-style: none; padding-left: 0; }
+
+/* ───────── PC : les écrans du téléphone en large ───────── */
+:root { --topbar-h: 46px; }
+.topbar { height: var(--topbar-h); }
+.side-switch { margin-top: auto; font-size: 0.85rem; min-height: 36px; }
+.stage { display: none; }
+@media (min-width: 900px) {
+  .stage { display: flex; flex-direction: column; margin-left: 220px; height: calc(100vh - var(--topbar-h)); background: var(--bg); }
+  .stage .m-screen { width: 100%; max-width: 1080px; margin: 0 auto; box-shadow: 0 0 0 1px var(--border); }
+  .stage .m-cabinet { grid-template-columns: repeat(4, 1fr); }
+  .stage .m-drawer { min-height: 128px; }
+  .stage .m-list { display: grid; grid-template-columns: 1fr 1fr; }
+  .stage .m-list > li { border-bottom: 1px solid var(--border); }
+  .d-classic { overflow: auto; padding: 1rem; height: 100%; }
+  .toast { bottom: 24px; }
+  .sheet-overlay { align-items: center; justify-content: center; }
+  .sheet-panel { max-width: 560px; border-radius: 10px; }
+}
+@media (min-width: 900px) {
+  .stage .m-home-top h1 { display: none; }
+  .stage .m-home-foot { display: flex; justify-content: center; }
+  .stage .m-home-foot .m-key { width: 100%; max-width: 420px; }
+}
+@media (min-width: 900px) {
+  /* Ranger sur PC : « Où » et « objet existant » à gauche, « Quoi » à droite, sans longue colonne. */
+  .stage .ranger { display: grid; grid-template-columns: 1fr 1fr; column-gap: 1rem; align-items: start; padding: 1rem; }
+  .stage .ranger > h1 { display: none; }
+  .stage .ranger > form.card { grid-column: 2; grid-row: 1 / span 3; }
+}
+
+.side-user { margin: 1rem 0.7rem 0; font-size: 0.85rem; color: var(--muted); }
+.side-user + .side-switch { margin-top: 0.5rem; }
+.side-user { margin-top: auto; }
+.side-user + .side-switch { margin-top: 0.5rem; }

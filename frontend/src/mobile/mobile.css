@@ -155,9 +155,11 @@
 .m-count input { width: 5.5rem; text-align: center; font-size: 1.1rem; }
 
 /* ───────── Accueil : l'atelier vu comme un meuble à tiroirs ─────────
-   Barlow : la graisse condensée des étiquettes de rangement pour les chiffres et titres,
-   la Barlow normale pour la lecture. Jaune de balisage seulement quand quelque chose attend. */
+   Une famille, deux largeurs : Barlow Condensed (chiffres, titres, bouton principal), Barlow (lecture).
+   Espacements pris dans une échelle de 4 px (--s1 à --s6).
+   Jaune de balisage = quelque chose attend. Orange atelier = l'action principale. Jamais l'inverse. */
 .m-home {
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px;
   --h-bench: #d9dfe2;
   --h-enamel: #f3f5f5;
   --h-steel: #9aa6ac;
@@ -176,32 +178,36 @@
     --h-steel: #4a565d;
     --h-ink: #e8edef;
     --h-tag: #2c363c;
-    --h-signal: #f5c400;
-    --h-signal-ink: #1a1500;
   }
 }
-.m-home .m-body { background: var(--h-bench); }
-.m-home-top h1 { font-family: "Barlow Condensed", "Barlow", sans-serif; font-weight: 700; font-size: 1.6rem; letter-spacing: 0.01em; align-items: center; }
-.m-home-top h1 small { font-family: "Barlow", sans-serif; font-size: 0.78rem; }
-.m-home .m-search input { background: var(--h-enamel); border: 0; border-bottom: 3px solid var(--h-signal); border-radius: 6px 6px 0 0; color: var(--h-ink); font-family: "Barlow", sans-serif; font-size: 1.05rem; }
+.m-home .m-body { background: var(--h-bench); padding-bottom: var(--s3); }
+.m-home-top { padding: var(--s3) var(--s4); padding-top: calc(var(--s3) + env(safe-area-inset-top)); }
+.m-home-top h1 { font-family: "Barlow Condensed", "Barlow", sans-serif; font-weight: 700; font-size: 1.75rem; letter-spacing: 0.01em; align-items: center; margin: 0 0 var(--s2); }
+.m-home-top h1 small { font-family: "Barlow", sans-serif; font-size: 0.8rem; }
+.m-home .m-search input { background: var(--h-enamel); border: 0; border-bottom: var(--s1) solid var(--h-signal); border-radius: var(--s2) var(--s2) 0 0; color: var(--h-ink); font-family: "Barlow", sans-serif; font-size: 1.05rem; }
 .m-home .m-search input::placeholder { color: var(--muted); }
-.m-home .m-filters .chip, .m-home .m-filters select.chip { border-radius: 4px; border-color: rgba(248,250,252,0.35); color: var(--bar-text); background: transparent; font-family: "Barlow", sans-serif; font-weight: 600; }
+.m-home .m-filters { padding: var(--s2) 0 0; gap: var(--s2); }
+.m-home .m-filters .chip, .m-home .m-filters select.chip { border-radius: var(--s1); border-color: rgba(248,250,252,0.35); color: var(--bar-text); background: transparent; font-family: "Barlow", sans-serif; font-weight: 600; }
 .m-home .m-filters select.chip option { color: #17222b; }
-.m-home .m-filters .chip.on { background: var(--h-signal); color: var(--h-signal-ink); border-color: var(--h-signal); }
+.m-home .m-filters .chip.on { background: var(--bar-text); color: var(--bar); border-color: var(--bar-text); }
 
-.m-cabinet { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px; padding: 10px; background: var(--h-steel); border-radius: 6px; box-shadow: inset 0 2px 0 rgba(255,255,255,0.25), inset 0 -2px 0 rgba(0,0,0,0.25); }
-.m-drawer { position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; min-height: 118px; padding: 22px 12px 12px; text-decoration: none; color: var(--h-ink); background: var(--h-enamel); border-radius: 3px; box-shadow: 0 2px 0 rgba(0,0,0,0.3); }
-.m-drawer::before { content: ""; position: absolute; top: 8px; left: 50%; width: 38%; height: 6px; transform: translateX(-50%); border-radius: 3px; background: var(--h-steel); box-shadow: inset 0 1px 0 rgba(0,0,0,0.25); }
+.m-cabinet { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); margin: var(--s4); padding: var(--s3); background: var(--h-steel); border-radius: var(--s2); box-shadow: inset 0 2px 0 rgba(255,255,255,0.25), inset 0 -2px 0 rgba(0,0,0,0.25); }
+.m-drawer { position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: var(--s2); min-height: 120px; padding: var(--s5) var(--s3) var(--s3); text-decoration: none; color: var(--h-ink); background: var(--h-enamel); border-radius: var(--s1); box-shadow: 0 2px 0 rgba(0,0,0,0.3); }
+.m-drawer::before { content: ""; position: absolute; top: var(--s2); left: 50%; width: 40%; height: var(--s2); transform: translateX(-50%); border-radius: var(--s1); background: var(--h-steel); box-shadow: inset 0 1px 0 rgba(0,0,0,0.25); }
 .m-drawer:active { transform: translateY(2px); box-shadow: none; }
-.m-drawer .count { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 3rem; line-height: 0.9; font-variant-numeric: tabular-nums; }
-.m-drawer .tag { align-self: stretch; padding: 4px 8px; background: var(--h-tag); border: 1px solid var(--h-steel); border-radius: 2px; font-weight: 600; font-size: 0.95rem; }
+.m-drawer .count { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 3.5rem; line-height: 0.85; font-variant-numeric: tabular-nums; }
+.m-drawer .tag { align-self: stretch; padding: var(--s1) var(--s2); background: var(--h-tag); border: 1px solid var(--h-steel); border-radius: 2px; font-weight: 600; font-size: 0.875rem; }
+.m-drawer.alert { min-height: 136px; }
 .m-drawer.alert .tag { background: var(--h-signal); border-color: var(--h-signal); color: var(--h-signal-ink); }
 
-.m-sub { margin: 14px 12px 6px; font-weight: 600; font-size: 1rem; color: var(--h-ink); }
-.m-home .m-chips { padding: 0 12px 4px; gap: 8px; }
-.m-part { flex: none; display: inline-block; padding: 9px 14px 9px 22px; text-decoration: none; white-space: nowrap; font-weight: 600; color: var(--h-ink); background: var(--h-tag); clip-path: polygon(12px 0, 100% 0, 100% 100%, 12px 100%, 0 50%); }
+.m-sub { margin: var(--s4) var(--s4) var(--s2); font-weight: 600; font-size: 1rem; color: var(--h-ink); }
+.m-home .m-chips { padding: 0 var(--s4) var(--s1); gap: var(--s2); }
+.m-part { flex: none; display: inline-block; padding: var(--s2) var(--s4) var(--s2) var(--s5); text-decoration: none; white-space: nowrap; font-weight: 600; color: var(--h-ink); background: var(--h-tag); clip-path: polygon(12px 0, 100% 0, 100% 100%, 12px 100%, 0 50%); }
 .m-part.place { background: var(--h-ink); color: var(--h-bench); }
-.m-key { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 16px 12px 12px; min-height: 60px; border-radius: 6px; border-bottom: 4px solid rgba(0,0,0,0.35); font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 1.45rem; letter-spacing: 0.02em; }
+
+/* Bouton principal : fixé au-dessus des onglets, à portée du pouce. */
+.m-home-foot { flex: none; padding: var(--s3) var(--s4) 32px; background: var(--h-bench); border-top: 1px solid var(--h-steel); }
+.m-key { display: flex; align-items: center; justify-content: center; gap: var(--s3); margin: 0; min-height: 56px; border-radius: var(--s2); border-bottom: var(--s1) solid rgba(0,0,0,0.35); font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 1.5rem; letter-spacing: 0.02em; background: var(--accent); color: var(--accent-text); text-decoration: none; }
 .m-key:active { transform: translateY(3px); border-bottom-width: 1px; }
 .m-home .m-row { background: var(--h-enamel); border-bottom: 1px solid var(--h-steel); }
 .m-home .m-row .txt b { font-weight: 600; }

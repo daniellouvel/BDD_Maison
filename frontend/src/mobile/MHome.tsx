@@ -213,14 +213,17 @@ export default function MHome({ statusLabel }: { statusLabel: string | null }) {
                 </div>
               </>
             )}
-            {canWrite && (
-              <Link to="/ranger" className="m-big m-key">
-                <span aria-hidden="true">＋</span> Ranger un objet
-              </Link>
-            )}
           </>
         )}
       </div>
+
+      {canWrite && (
+        <div className="m-home-foot">
+          <Link to="/ranger" className="m-key">
+            <span aria-hidden="true">＋</span> Ranger un objet
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
